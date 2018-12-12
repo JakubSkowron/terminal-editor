@@ -19,15 +19,17 @@ static int stdin_fd = ::fileno(stdin);
 static int stdout_fd = ::fileno(stdout);
 
 /* wrapper for ::write */
-static void writeout(const char* s, std::size_t count) {
+static void writeout(const char* s, size_t count) {
   bool previously_zero = false;
 
+  auto charsLeft = count;
   while (true) {
-    ::ssize_t n = ::write(stdout_fd, s, count);
+    ::ssize_t charsWritten = ::write(stdout_fd, s, charsLeft);
 
-    if (n == -1) throw std::system_error(errno, std::generic_category(), "write to stdout");
+    if (charsWritten == -1)
+        throw std::system_error(errno, std::generic_category(), "write to stdout");
 
-    if (n == 0) {
+    if (charsWritten == 0) {
       if (previously_zero)
         throw std::runtime_error("write to stdout returned 0 twice, stop retrying");
 
@@ -37,9 +39,12 @@ static void writeout(const char* s, std::size_t count) {
 
     previously_zero = false;
 
-    count -= n;
+    charsLeft -= static_cast<size_t>(charsWritten);
   }
 }
+
+/* wrapper for ::write */
+static void writeout(const char* s, int count)  { writeout(s, static_cast<size_t>(count)); }
 
 /* wrapper for ::write */
 static void writeout(const char* s) { writeout(s, std::strlen(s)); }
@@ -54,7 +59,7 @@ class TermiosEchoOff {
       throw std::system_error(errno, std::generic_category(), "tcgetattr");
 
     tios_backup = tios;
-    tios.c_lflag &= ~(ECHO | ICANON);  // turn off echo and canonical mode
+    tios.c_lflag &= ~static_cast<tcflag_t>(ECHO | ICANON); // turn off echo and canonical mode
 
     // make changes, TCSANOW means instantly
     if (::tcsetattr(stdin_fd, TCSANOW, &tios) == -1)
@@ -113,7 +118,7 @@ void cursor_goto(int x, int y) {
 }
 
 void message_box(const char* message) {
-  int len = std::strlen(message);                 // TODO: count UTF-8 characters
+  int len = static_cast<int>(std::strlen(message));                 // TODO: count UTF-8 characters
   len = std::min(terminal_size::width - 4, len);  // clamp length of message
 
   int box_width = len + 4;
@@ -158,7 +163,7 @@ class OnScreenResize {
   ~OnScreenResize() { terminal_size::stop_listening(); }
 };
 
-int main(int argc, char** argv) {
+int main() {
   try {
     TermiosEchoOff echo_off_scope;
     AlternateScreenBufer alternate_screen_buffer_scope;
