@@ -9,6 +9,8 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include "terminal_size.h"
+
 /* Using ANSI and xterm escape codes. It works in PuTTy, gnome-terminal,
    and other xterm-like terminals. Some codes will also work on real tty.
    Currenlty only supporting UTF-8 terminals. */
@@ -89,24 +91,21 @@ class AlternateScreenBufer {
   }
 };
 
-/* This function uses CSI 18 t escape code.
-   TODO: it will not work on real tty, check how tput does this.
-   Output parameters: widht and height of text area in characters */
-static void get_screen_size(int& width, int& height) {
-  // Ask for size of the text area
-  writeout("\x1B[18t", 5);
-  char buf[20];
-  ssize_t n = ::read(stdin_fd, buf, 20);
+class HideCursor {
+ public:
+  HideCursor() {
+    writeout("\x1B[?25l");  // Hide Cursor (DECTCEM)
+  }
 
-  if (n == -1) throw std::system_error(errno, std::generic_category(), "read screen size");
-
-  buf[n] = '\0';
-  // Answer is CSI 8 ; height ; width t
-  int matched_params = std::sscanf(buf, "\x1B[8;%d;%dt", &height, &width);
-  if (matched_params != 2) throw std::runtime_error("ill-formed answer from terminal");
-}
-
-static int screen_width, screen_height;
+  ~HideCursor() {
+    try {
+      writeout("\x1B[?25h");  //  Show Cursor (DECTCEM)
+    } catch (std::exception& e) {
+      std::fputs(e.what(), stderr);
+      std::fputs("\n", stderr);
+    }
+  }
+};
 
 void cursor_goto(int x, int y) {
   std::string command = "\x1B[" + std::to_string(y) + ";" + std::to_string(x) + "H";
@@ -114,12 +113,12 @@ void cursor_goto(int x, int y) {
 }
 
 void message_box(const char* message) {
-  int len = std::strlen(message);         // TODO: count UTF-8 characters
-  len = std::min(screen_width - 4, len);  // clamp length of message
+  int len = std::strlen(message);                 // TODO: count UTF-8 characters
+  len = std::min(terminal_size::width - 4, len);  // clamp length of message
 
   int box_width = len + 4;
-  int x = screen_width / 2 - box_width / 2;
-  int y = screen_height / 2 - 2;  // TODO: checks for too small height
+  int x = terminal_size::width / 2 - box_width / 2;
+  int y = terminal_size::height / 2 - 2;  // TODO: checks for too small height
   cursor_goto(x, y);
   std::string horizontal_bar;
   for (int i = 0; i < box_width - 2; ++i) horizontal_bar += "─";
@@ -149,28 +148,51 @@ void message_box(const char* message) {
   writeout("\x1B[30;47m", 8);
 }
 
+// TODO: make possible more than one listner at a time
+//      (currently is directly called in signal handler)
+class OnScreenResize {
+ public:
+  OnScreenResize(std::function<void(int width, int height)> listner) {
+    terminal_size::start_listening(listner);
+  }
+  ~OnScreenResize() { terminal_size::stop_listening(); }
+};
+
 int main(int argc, char** argv) {
   try {
     TermiosEchoOff echo_off_scope;
     AlternateScreenBufer alternate_screen_buffer_scope;
+    HideCursor hide_cursor_scope;
 
-    get_screen_size(screen_width, screen_height);
+    auto redraw = []() {
+      // set foreground black, background white
+      writeout("\x1B[30;47m", 8);
 
-    // set foreground black, background white
-    writeout("\x1B[30;47m", 8);
+      // clear screen, move cursor to top-left corner
+      writeout("\x1B[2J\x1B[;H", 8);
 
-    // clear screen, move cursor to top-left corner
-    writeout("\x1B[2J\x1B[;H", 8);
+      std::printf("Screen size %dx%d\n", terminal_size::width, terminal_size::height);
+      std::puts("Press any key...");
+    };
 
-    std::printf("Screen size %dx%d\n", screen_width, screen_height);
-    std::puts("Press any key...");
+    auto show_message_box = [](int width, int height) {
+      std::string message = "Hello World! " + std::to_string(width) + "x" + std::to_string(height);
+      message_box(message.c_str());
+    };
 
-    std::string message =
-        "Hello World! " + std::to_string(screen_width) + "x" + std::to_string(screen_height);
-    message_box(message.c_str());
+    terminal_size::update();
+    redraw();
+    show_message_box(terminal_size::width, terminal_size::height);
 
-    // wait for any key
-    (void)std::getchar();
+    {
+      OnScreenResize listner{[=](int w, int h) {
+        redraw();
+        show_message_box(w, h);
+      }};
+
+      // wait for any key
+      (void)std::getchar();
+    }
 
   } catch (std::exception& e) {
     std::fputs(e.what(), stderr);
