@@ -9,6 +9,10 @@
 #include <termios.h>
 #include <unistd.h>
 
+/* Using ANSI and xterm escape codes. It works in PuTTy, gnome-terminal,
+   and other xterm-like terminals. Some codes will also work on real tty.
+   Currenlty only supporting UTF-8 terminals. */
+
 static int stdin_fd = ::fileno(stdin);
 static int stdout_fd = ::fileno(stdout);
 
@@ -64,13 +68,20 @@ class TermiosEchoOff {
   ::termios tios_backup;
 };
 
-/* In destructor resets SGR parameters (default foreground, background, etc.),
-   and clears from cursor to end of screen*/
-class ResetSGRAtExit {
+/* Turns alternate xterm screen buffer on, restores to primary in destructor */
+class AlternateScreenBufer {
  public:
-  ~ResetSGRAtExit() {
+  AlternateScreenBufer() {
+    writeout("\x1B[?1049h");  // DEC Private Mode Set (DECSET)
+  }
+
+  ~AlternateScreenBufer() {
     try {
-      writeout("\x1B[0m\x1B[J", 7);  // reset parameters, clear to end of screen
+      // Fail-safe for ANSI tty, which does not have xterm buffer.
+      // Move to column 1, reset parameters, clear to end of screen
+      writeout("\x1B[G\x1B[0m\x1B[J");
+
+      writeout("\x1B[?1049l");  // DEC Private Mode Reset (DECRST)
     } catch (std::exception& e) {
       std::fputs(e.what(), stderr);
       std::fputs("\n", stderr);
@@ -141,7 +152,7 @@ void message_box(const char* message) {
 int main(int argc, char** argv) {
   try {
     TermiosEchoOff echo_off_scope;
-    ResetSGRAtExit reset_sgr_at_exit;
+    AlternateScreenBufer alternate_screen_buffer_scope;
 
     get_screen_size(screen_width, screen_height);
 
@@ -160,9 +171,6 @@ int main(int argc, char** argv) {
 
     // wait for any key
     (void)std::getchar();
-
-    // reset parameters, clear screen, move cursor to top-left corner
-    writeout("\x1B[0m\x1B[2J\x1B[;H", 12);
 
   } catch (std::exception& e) {
     std::fputs(e.what(), stderr);
