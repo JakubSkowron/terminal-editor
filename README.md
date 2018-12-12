@@ -24,6 +24,7 @@
 18. Wsparcie zmiany rozmiaru okna terminala.
 19. cała (prawie) funkcjonalność ma być dostępna bez myszy.
 20. Unlimitted UNDO/REDO levels.
+21. Support for UTF-8. All other encodings are optional.
 
 # Extra requirements
 

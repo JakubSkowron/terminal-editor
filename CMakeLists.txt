@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 project(TerminalEditor LANGUAGES CXX)
 
 function(SetCompilerOptions targetName)
-	# Recommended warnings mostly taken from https://github.com/lefticus/cppbestpractices/blob/master/02-Use_the_Tools_Available.md
+    # Recommended warnings mostly taken from https://github.com/lefticus/cppbestpractices/blob/master/02-Use_the_Tools_Available.md
     if(MSVC)
         set(optionsList
             /permissive-    # Enforces standards conformance.
@@ -57,11 +57,11 @@ function(SetCompilerOptions targetName)
     endif()
     target_compile_options(${targetName} PRIVATE ${optionsList})
 
-	# As this is a public compile feature anything that links to target will also build with -std=c++14
-	target_compile_features(${targetName} PUBLIC cxx_std_14)
+    # As this is a public compile feature anything that links to target will also build with -std=c++14
+    target_compile_features(${targetName} PUBLIC cxx_std_14)
 
     if(MSVC)
-		# Get rid of annoying compiler warnings.
+        # Get rid of annoying compiler warnings.
         target_compile_definitions(${targetName} PUBLIC _CRT_SECURE_NO_WARNINGS)
     endif()
 endfunction()
@@ -71,11 +71,13 @@ endfunction()
 set(APP_NAME terminal-editor)
 
 set(EDITOR_SOURCES
-	main.cpp
-	terminal_size.h
-	terminal_size.cpp
-	format_source.sh
-	)
+    main.cpp
+    terminal_size.h
+    terminal_size.cpp
+    format_source.sh
+
+    README.md
+    )
 
 add_executable(${APP_NAME} ${EDITOR_SOURCES})
 SetCompilerOptions(${APP_NAME})
