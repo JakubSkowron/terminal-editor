@@ -11,7 +11,7 @@ TEST_CASE("Loading files works", "[text-buffer]") {
         TextBuffer textBuffer;
         textBuffer.loadFile("test-data/empty.txt");
 
-        REQUIRE(textBuffer.getNumberOfLines() == 0);
+        REQUIRE(textBuffer.getNumberOfLines() == 1);
         REQUIRE(textBuffer.getLongestLineLength() == 0);
         REQUIRE(textBuffer.getLine(0) == "");
         REQUIRE(textBuffer.getLine(1) == "");
@@ -111,5 +111,39 @@ TEST_CASE("Text insertion works", "[text-buffer]") {
         REQUIRE(textBuffer.getLine(2) == "Two");
         REQUIRE(textBuffer.getLine(3) == "Three");
         REQUIRE(textBuffer.getLine(4) == "Four a dog dude!");
+    }
+}
+
+TEST_CASE("Text search works", "[text-buffer]") {
+    SECTION("Search for empty text.") {
+        TextBuffer textBuffer;
+        textBuffer.loadFile("test-data/non-empty-line-at-end.txt");
+        auto position = textBuffer.find({1, 3}, "");
+
+        REQUIRE(position == Position{1, 3});
+    }
+
+    SECTION("Search for existing text.") {
+        TextBuffer textBuffer;
+        textBuffer.loadFile("test-data/non-empty-line-at-end.txt");
+        auto position = textBuffer.find({0, 3}, "dog");
+
+        REQUIRE(position == Position{1, 6});
+    }
+
+    SECTION("Search for non-existing text.") {
+        TextBuffer textBuffer;
+        textBuffer.loadFile("test-data/non-empty-line-at-end.txt");
+        auto position = textBuffer.find({0, 0}, "lola");
+
+        REQUIRE(textBuffer.isPastEnd(position));
+    }
+
+    SECTION("Search for text after it appears.") {
+        TextBuffer textBuffer;
+        textBuffer.loadFile("test-data/non-empty-line-at-end.txt");
+        auto position = textBuffer.find({1, 7}, "dog");
+
+        REQUIRE(textBuffer.isPastEnd(position));
     }
 }

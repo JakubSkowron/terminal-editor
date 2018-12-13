@@ -19,6 +19,30 @@ struct Position {
 
     Position() : row(0), column(0) {}
     Position(int row, int column) : row(row), column(column) {}
+
+    friend bool operator==(Position position0, Position position1) {
+        return (position0.row == position1.row) && (position0.column == position1.column);
+    }
+    friend bool operator!=(Position position0, Position position1) {
+        return !(position0 == position1);
+    }
+    friend bool operator<(Position position0, Position position1) {
+        if (position0.row < position1.row) 
+            return true;
+        if (position0.row > position1.row) 
+            return false;
+
+        return position0.column < position1.column;
+    }
+    friend bool operator>(Position position0, Position position1) {
+        return position1 < position0;
+    }
+    friend bool operator<=(Position position0, Position position1) {
+        return (position0 < position1) || (position0 == position1);
+    }
+    friend bool operator>=(Position position0, Position position1) {
+        return (position0 > position1) || (position0 == position1);
+    }
 };
 
 class TextBuffer {
@@ -63,7 +87,17 @@ public:
     /// - row is clamped to range from 0 to number of lines (inclusive),
     /// - column is clamped to range from 0 to line length (inclusive).
     //[[nodiscard]] - C++ 17
-    Position clampPosition(Position position);
+    Position clampPosition(Position position) const;
+
+    /// Returns position where given text is located.
+    /// Returns Position past the end position if text was not found. @todo Return optional<Position> instead.
+    /// @param startPosition    Position to start search from.
+    /// @param text             Text to look for. Must not contain newlines.
+    Position find(Position startPosition, const std::string& text) const;
+
+    /// Returns true if position is past the end of text.
+    /// @todo Remove. Should not be necessary.
+    bool isPastEnd(Position position) const;
 };
 
 } // namespace terminal_editor

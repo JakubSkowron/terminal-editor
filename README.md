@@ -30,3 +30,7 @@
 
 1. Możliwość dodawania okienek z rozszerzeniami, np. grep, bash console
 2. Możliwość zagnieżdżenia w istniejącym programie (tu masz wymiary okienka, daj listnery na zmianę rozmiaru, run)
+
+# Running tests
+
+`editor-tests` executable must be run inside `tests/` directory, because it needs to access `tests/test-data`.

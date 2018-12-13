@@ -32,11 +32,6 @@ void TextBuffer::loadFile(const std::string& fileName) {
 
     std::string text((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>()); // @todo Super inefficient.
 
-    if (text.empty()) {
-        lines.clear();
-        return;
-    }
-
     lines = splitString(text, '\n');
 }
 
@@ -119,7 +114,7 @@ Position TextBuffer::insertText(Position position, const std::string& text) {
     return endPosition;
 }
 
-Position TextBuffer::clampPosition(Position position) {
+Position TextBuffer::clampPosition(Position position) const {
     position.row = std::max(position.row, 0);
     position.row = std::min(position.row, getNumberOfLines());
 
@@ -129,6 +124,33 @@ Position TextBuffer::clampPosition(Position position) {
     position.column = std::min(position.column, lineLength);
 
     return position;
+}
+
+Position TextBuffer::find(Position startPosition, const std::string& text) const {
+    for (int i = startPosition.row; i < getNumberOfLines(); ++i) {
+        auto line = lines[i];
+        auto pos = line.find(text, startPosition.column);
+        if (pos == std::string::npos)
+            continue;
+
+        return { i, static_cast<int>(pos) };
+    }
+
+    return { getNumberOfLines(), 0 }; // String not found.
+}
+
+bool TextBuffer::isPastEnd(Position position) const {
+    if (position.row < 0)
+        return false;
+
+    if (position.row >= getNumberOfLines())
+        return true;
+
+    const auto& line = lines[position.row];
+    if (position.column >= static_cast<int>(line.size()))
+        return true;
+
+    return false;
 }
 
 } // namespace terminal_editor
