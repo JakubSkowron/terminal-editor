@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 project(TerminalEditor LANGUAGES CXX)
+enable_testing()
 
 function(SetCompilerOptions targetName)
     # Recommended warnings mostly taken from https://github.com/lefticus/cppbestpractices/blob/master/02-Use_the_Tools_Available.md
@@ -66,18 +67,41 @@ function(SetCompilerOptions targetName)
     endif()
 endfunction()
 
-# terminal-editor target
+# terminal-editor-library target
 
-set(APP_NAME terminal-editor)
+set(LIB_NAME terminal-editor-library)
 
-set(EDITOR_SOURCES
-    main.cpp
+set(LIB_SOURCES
     terminal_size.h
     terminal_size.cpp
     format_source.sh
 
+    text_buffer.h
+    text_buffer.cpp
+    )
+
+add_library(${LIB_NAME} ${LIB_SOURCES})
+set_target_properties(${LIB_NAME} PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}")
+SetCompilerOptions(${LIB_NAME})
+
+# terminal-editor target
+
+set(APP_NAME terminal-editor)
+
+set(APP_SOURCES
+    main.cpp
+
     README.md
     )
 
-add_executable(${APP_NAME} ${EDITOR_SOURCES})
+add_executable(${APP_NAME} ${APP_SOURCES})
+target_link_libraries(${APP_NAME} PRIVATE ${LIB_NAME})
 SetCompilerOptions(${APP_NAME})
+
+# Tests
+
+add_subdirectory(tests)
+
+if(WIN32)
+    set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT editor-tests)
+endif()
