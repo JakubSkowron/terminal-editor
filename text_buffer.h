@@ -8,6 +8,7 @@ namespace terminal_editor {
 /// Splits string by given delimiter.
 /// Delimiter is removed from the returned strings.
 /// Empty strings are preserved.
+/// Result will always have size (number of delimiters + 1).
 std::vector<std::string> splitString(const std::string& text, char delimiter);
 
 /// This class describes position in a TextBuffer.
@@ -15,6 +16,9 @@ std::vector<std::string> splitString(const std::string& text, char delimiter);
 struct Position {
     int row;        ///< Row in text (zero indexed).
     int column;     ///< Column in row (zero indexed).
+
+    Position() : row(0), column(0) {}
+    Position(int row, int column) : row(row), column(column) {}
 };
 
 class TextBuffer {
@@ -27,6 +31,9 @@ public:
     void loadFile(const std::string& fileName);
 
     /// Returns number of lines in this text buffer.
+    /// @todo How many lines has an empty file?
+    ///       How many lines has a file without LF's?
+    ///       How many lines has a file with one character, and LF?
     int getNumberOfLines() const;
 
     /// Returns length of the longest line.

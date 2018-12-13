@@ -11,7 +11,7 @@ std::vector<std::string> splitString(const std::string& text, char delimiter) {
     std::string token;
 
     std::istringstream tokenStream(text);
-    bool lastLineHadEof = true;
+    bool lastLineHadEof = false;
     while (std::getline(tokenStream, token, delimiter))
     {
         lastLineHadEof = tokenStream.eof();
@@ -31,6 +31,11 @@ void TextBuffer::loadFile(const std::string& fileName) {
     input.open(fileName, std::ios::binary);
 
     std::string text((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>()); // @todo Super inefficient.
+
+    if (text.empty()) {
+        lines.clear();
+        return;
+    }
 
     lines = splitString(text, '\n');
 }
