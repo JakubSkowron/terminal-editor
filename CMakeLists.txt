@@ -44,7 +44,7 @@ function(SetCompilerOptions targetName)
             -Woverloaded-virtual        # warn if you overload (not override) a virtual function
             -Wpedantic                  # warn if non-standard C++ is used
             -Wconversion                # warn on type conversions that may lose data
-            -Wsign-conversion           # warn on sign conversions
+            #-Wsign-conversion           # warn on sign conversions
             #-Wmisleading-indentation    # (not supported on old gcc) warn if indentation implies blocks where blocks do not exist
             #-Wduplicated-cond           # (not supported on old gcc) warn if if / else chain has duplicated conditions
             #-Wduplicated-branches       # (not supported on old gcc) warn if if / else branches have duplicated code
