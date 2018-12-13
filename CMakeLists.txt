@@ -36,7 +36,7 @@ function(SetCompilerOptions targetName)
         set(optionsList
             #-Werror                     # Treat warnings as errors
             -Wall -Wextra               # reasonable and standard
-            -Wshadow                    # warn the user if a variable declaration shadows one from a parent context
+            #-Wshadow                    # warn the user if a variable declaration shadows one from a parent context
             -Wnon-virtual-dtor          # warn the user if a class with virtual functions has a non-virtual destructor. This helps catch hard to track down memory errors
             -Wold-style-cast            # warn for c-style casts
             -Wcast-align                # warn for potential performance problem casts
@@ -73,12 +73,16 @@ set(LIB_NAME terminal-editor-library)
 
 set(LIB_SOURCES
     terminal_size.h
-    terminal_size.cpp
     format_source.sh
 
     text_buffer.h
     text_buffer.cpp
     )
+
+if(WIN32)
+else()
+    list(APPEND LIB_SOURCES terminal_size.cpp)
+endif()
 
 add_library(${LIB_NAME} ${LIB_SOURCES})
 set_target_properties(${LIB_NAME} PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}")
