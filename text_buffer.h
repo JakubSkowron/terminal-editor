@@ -79,9 +79,18 @@ public:
     /// Inserts given text into this text buffer.
     /// position is first clamped to a valid range.
     /// @param position     Position to insert into.
-    /// @param text         Text to insert (in UTF-8). May contain new lines.
+    /// @param text         Text to insert. May contain new lines.
     /// @returns Position of the end of inserted text in the new text buffer.
     Position insertText(Position position, const std::string& text);
+
+    /// Deletes text between two positions: from positionStart (inclusive) to positionEnd (exclusive).
+    /// positions are first clamped to valid range.
+    /// positions can be on different lines.
+    /// If positionStart is past positionEnd no characters are removed.
+    /// @param positionStart    Start position. This is first position that will be removed.
+    /// @param positionEnd      End position. This is first position that will not be removed.
+    /// @returns Number of characters removed (newlines are not included).
+    int deleteText(Position positionStart, Position positionEnd);
 
     /// Clamps position to a valid range, so:
     /// - row is clamped to range from 0 to number of lines (inclusive),

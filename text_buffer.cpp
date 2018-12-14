@@ -114,6 +114,49 @@ Position TextBuffer::insertText(Position position, const std::string& text) {
     return endPosition;
 }
 
+int TextBuffer::deleteText(Position positionStart, Position positionEnd) {
+    positionStart = clampPosition(positionStart);
+    positionEnd = clampPosition(positionEnd);
+
+    if (positionStart.row == positionEnd.row) {
+        auto& line = lines[positionStart.row];
+        auto numCharsToDelete = positionEnd.column - positionStart.column;
+        if (numCharsToDelete <= 0)
+            return 0;
+
+        line.erase(positionStart.column, numCharsToDelete);
+        return numCharsToDelete;
+    }
+
+    if (positionStart.row > positionEnd.row)
+        return 0;
+
+    // Remove all characters in line after positionStart.
+    // Remove all characters in line before positionEnd.
+    // Remove all lines between start and end lines.
+
+    auto& startLine = lines[positionStart.row];
+    int startCharsToDelete = static_cast<int>(startLine.size()) - positionStart.column;
+    startLine.erase(positionStart.column, startCharsToDelete);
+
+    auto& endLine = lines[positionEnd.row];
+    int endCharsToDelete = positionEnd.column;
+    endLine.erase(0, positionEnd.column);
+
+    auto lineRangeStart = lines.begin() + positionStart.row + 1;
+    auto lineRangeEnd = lines.begin() + positionEnd.row;
+
+    int lineCharsToDelete = 0;
+    for (auto it = lineRangeStart; it != lineRangeEnd; ++it) {
+        const auto& line = *it;
+        lineCharsToDelete += static_cast<int>(line.size());
+    }
+
+    lines.erase(lineRangeStart, lineRangeEnd);
+
+    return startCharsToDelete + endCharsToDelete + lineCharsToDelete;
+}
+
 Position TextBuffer::clampPosition(Position position) const {
     position.row = std::max(position.row, 0);
     position.row = std::min(position.row, getNumberOfLines());

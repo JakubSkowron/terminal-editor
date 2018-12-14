@@ -18,6 +18,6 @@ target_link_libraries(${APP_NAME} PRIVATE terminal-editor-library)
 #catch_discover_tests(${APP_NAME} WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(WIN32)
-	#set_target_properties(${APP_NAME} PROPERTIES VS_DEBUGGER_COMMAND_ARGUMENTS "-e pgpu -c TestData1.5/basic/config.json")
-	set_target_properties(${APP_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+    #set_target_properties(${APP_NAME} PROPERTIES VS_DEBUGGER_COMMAND_ARGUMENTS "-e pgpu -c TestData1.5/basic/config.json")
+    set_target_properties(${APP_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
