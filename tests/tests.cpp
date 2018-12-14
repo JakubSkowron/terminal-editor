@@ -152,9 +152,9 @@ TEST_CASE("Text deletion works", "[text-buffer]") {
     SECTION("Delete empty range.") {
         TextBuffer textBuffer;
         textBuffer.loadFile("test-data/four-lines-and-lf.txt");
-        auto numCharsDeleted = textBuffer.deleteText({1, 3}, {1, 3});
+        auto stringDeleted = textBuffer.deleteText({1, 3}, {1, 3});
 
-        REQUIRE(numCharsDeleted == 0);
+        REQUIRE(stringDeleted == "");
         REQUIRE(textBuffer.getNumberOfLines() == 5);
         REQUIRE(textBuffer.getLine(0) == "123456");
         REQUIRE(textBuffer.getLine(1) == "abcdef");
@@ -166,9 +166,9 @@ TEST_CASE("Text deletion works", "[text-buffer]") {
     SECTION("Delete inverted range.") {
         TextBuffer textBuffer;
         textBuffer.loadFile("test-data/four-lines-and-lf.txt");
-        auto numCharsDeleted = textBuffer.deleteText({1, 3}, {0, 3});
+        auto stringDeleted = textBuffer.deleteText({1, 3}, {0, 3});
 
-        REQUIRE(numCharsDeleted == 0);
+        REQUIRE(stringDeleted == "");
         REQUIRE(textBuffer.getNumberOfLines() == 5);
         REQUIRE(textBuffer.getLine(0) == "123456");
         REQUIRE(textBuffer.getLine(1) == "abcdef");
@@ -180,9 +180,9 @@ TEST_CASE("Text deletion works", "[text-buffer]") {
     SECTION("Delete in same line.") {
         TextBuffer textBuffer;
         textBuffer.loadFile("test-data/four-lines-and-lf.txt");
-        auto numCharsDeleted = textBuffer.deleteText({1, 1}, {1, 5});
+        auto stringDeleted = textBuffer.deleteText({1, 1}, {1, 5});
 
-        REQUIRE(numCharsDeleted == 4);
+        REQUIRE(stringDeleted == "bcde");
         REQUIRE(textBuffer.getNumberOfLines() == 5);
         REQUIRE(textBuffer.getLine(0) == "123456");
         REQUIRE(textBuffer.getLine(1) == "af");
@@ -194,9 +194,9 @@ TEST_CASE("Text deletion works", "[text-buffer]") {
     SECTION("Delete many lines.") {
         TextBuffer textBuffer;
         textBuffer.loadFile("test-data/four-lines-and-lf.txt");
-        auto numCharsDeleted = textBuffer.deleteText({0, 4}, {3, 2});
+        auto stringDeleted = textBuffer.deleteText({0, 4}, {3, 2});
 
-        REQUIRE(numCharsDeleted == 2 + 6 + 6 + 2);
+        REQUIRE(stringDeleted == "56\nabcdef\nABCDEF\n!@");
         REQUIRE(textBuffer.getNumberOfLines() == 3);
         REQUIRE(textBuffer.getLine(0) == "1234");
         REQUIRE(textBuffer.getLine(1) == "#$%^");

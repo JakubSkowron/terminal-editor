@@ -89,8 +89,8 @@ public:
     /// If positionStart is past positionEnd no characters are removed.
     /// @param positionStart    Start position. This is first position that will be removed.
     /// @param positionEnd      End position. This is first position that will not be removed.
-    /// @returns Number of characters removed (newlines are not included).
-    int deleteText(Position positionStart, Position positionEnd);
+    /// @returns Characters removed (including newlines).
+    std::string deleteText(Position positionStart, Position positionEnd);
 
     /// Clamps position to a valid range, so:
     /// - row is clamped to range from 0 to number of lines (inclusive),

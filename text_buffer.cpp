@@ -114,7 +114,7 @@ Position TextBuffer::insertText(Position position, const std::string& text) {
     return endPosition;
 }
 
-int TextBuffer::deleteText(Position positionStart, Position positionEnd) {
+std::string TextBuffer::deleteText(Position positionStart, Position positionEnd) {
     positionStart = clampPosition(positionStart);
     positionEnd = clampPosition(positionEnd);
 
@@ -122,14 +122,15 @@ int TextBuffer::deleteText(Position positionStart, Position positionEnd) {
         auto& line = lines[positionStart.row];
         auto numCharsToDelete = positionEnd.column - positionStart.column;
         if (numCharsToDelete <= 0)
-            return 0;
+            return {};
 
+        auto removedString = line.substr(positionStart.column, numCharsToDelete);
         line.erase(positionStart.column, numCharsToDelete);
-        return numCharsToDelete;
+        return removedString;
     }
 
     if (positionStart.row > positionEnd.row)
-        return 0;
+        return {};
 
     // Remove all characters in line after positionStart.
     // Remove all characters in line before positionEnd.
@@ -137,24 +138,27 @@ int TextBuffer::deleteText(Position positionStart, Position positionEnd) {
 
     auto& startLine = lines[positionStart.row];
     int startCharsToDelete = static_cast<int>(startLine.size()) - positionStart.column;
+    auto startRemovedString = startLine.substr(positionStart.column, startCharsToDelete);
     startLine.erase(positionStart.column, startCharsToDelete);
 
     auto& endLine = lines[positionEnd.row];
-    int endCharsToDelete = positionEnd.column;
+    auto endRemovedString = endLine.substr(0, positionEnd.column);
     endLine.erase(0, positionEnd.column);
 
     auto lineRangeStart = lines.begin() + positionStart.row + 1;
     auto lineRangeEnd = lines.begin() + positionEnd.row;
 
-    int lineCharsToDelete = 0;
+    std::stringstream linesRemoved;
+    linesRemoved << startRemovedString << '\n';
     for (auto it = lineRangeStart; it != lineRangeEnd; ++it) {
         const auto& line = *it;
-        lineCharsToDelete += static_cast<int>(line.size());
+        linesRemoved << line << '\n';
     }
+    linesRemoved << endRemovedString;
 
     lines.erase(lineRangeStart, lineRangeEnd);
 
-    return startCharsToDelete + endCharsToDelete + lineCharsToDelete;
+    return linesRemoved.str();
 }
 
 Position TextBuffer::clampPosition(Position position) const {
