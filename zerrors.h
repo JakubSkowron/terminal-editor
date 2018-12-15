@@ -105,7 +105,7 @@ public:
 #define ZASSERT(arg0, ...) \
     if ((arg0), ## __VA_ARGS__) {             \
     } else                  \
-        (terminal_editor::make_throw_helper2(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: ", (arg0), ## __VA_ARGS__).message << "Condition is false: " << terminal_editor::select_helper(#arg0, #__VA_ARGS__ +0) << " ")
+        (terminal_editor::make_throw_helper2(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: ", (arg0), ## __VA_ARGS__).message << "Condition is false: " << terminal_editor::select_helper(#arg0, #__VA_ARGS__) << " ")
 
 #endif
 
@@ -165,13 +165,19 @@ ThrowHelper<Exc> make_throw_helper2(const char* messageBase, Exc exc, bool cond)
     return ThrowHelper<Exc>(std::move(exc), messageBase);
 }
 
-inline const char* select_helper(const char* arg0, int) {
+inline const char* select_helper(const char* arg0, int arg1) {
+    ZUNUSED(arg1);
     return arg0;
 }
 
-inline const char* select_helper(const char* arg0, const char* arg1) {
+inline const char* select_helper(const char* arg0, const char (&arg1)[1]) {
+    ZUNUSED(arg1);
+    return arg0;
+}
+
+inline const char* select_helper(const char* arg0, const std::string& arg1) {
     ZUNUSED(arg0);
-    return arg1;
+    return arg1.c_str();
 }
 
 } // namespace terminal_editor
