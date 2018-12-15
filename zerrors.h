@@ -103,7 +103,7 @@ public:
 #define ZASSERT(arg0, ...) \
     if ((arg0), ## __VA_ARGS__) {             \
     } else                  \
-        (terminal_editor::make_throw_helper2(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: ", (arg0), ## __VA_ARGS__).message << "Condition is false: " << (#arg0, ## #__VA_ARGS__) << " ")
+        (terminal_editor::make_throw_helper2(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: ", (arg0), ## __VA_ARGS__).message << "Condition is false: " << terminal_editor::select_helper(#arg0, #__VA_ARGS__ +0) << " ")
 
 #endif
 
