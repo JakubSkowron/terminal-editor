@@ -42,7 +42,7 @@ function(SetCompilerOptions targetName)
             -Wcast-align                # warn for potential performance problem casts
             -Wunused                    # warn on anything being unused
             -Woverloaded-virtual        # warn if you overload (not override) a virtual function
-            -Wpedantic                  # warn if non-standard C++ is used
+            #-Wpedantic                  # warn if non-standard C++ is used
             -Wconversion                # warn on type conversions that may lose data
             #-Wsign-conversion           # warn on sign conversions
             #-Wmisleading-indentation    # (not supported on old gcc) warn if indentation implies blocks where blocks do not exist
@@ -54,6 +54,7 @@ function(SetCompilerOptions targetName)
             -Wdouble-promotion          # warn if float is implicit promoted to double
             -Wformat=2                  # warn on security issues around functions that format output (ie printf)
             #-Wlifetime                  # (clang only currently) shows object lifetime issues
+            #-Wno-variadic-macros		# Don't complain about non-standard use of macros.
         )
     endif()
     target_compile_options(${targetName} PRIVATE ${optionsList})
@@ -77,6 +78,8 @@ set(LIB_SOURCES
 
     text_buffer.h
     text_buffer.cpp
+
+    zerrors.h
     )
 
 if(WIN32)
