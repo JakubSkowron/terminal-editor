@@ -1,3 +1,6 @@
+// Distributed under MIT License, see LICENSE file
+// (c) 2018 Zbigniew Skowron, zbychs@gmail.com
+
 #include "text_buffer.h"
 
 #include "zerrors.h"

@@ -1,3 +1,6 @@
+// Distributed under MIT License, see LICENSE file
+// (c) 2018 Jakub Skowron, jskowron183@gmail.com
+
 #include <wchar.h>  //for POSIX ::wcswidth
 
 #include <clocale>
@@ -17,6 +20,10 @@ void diagnose_string(const char* s) {
   std::printf("number of columns (::wcswidth) = %d\n", width);
 
   delete wstring;
+}
+
+void diagnose_character_by_character(const char* s) {
+  std::printf("::wcwidth(\u25cc\u0302) == %d", ::wcwidth(*L"\u0302"));
 }
 
 int main(int argc, char** argv) {

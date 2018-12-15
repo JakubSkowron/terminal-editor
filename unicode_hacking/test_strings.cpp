@@ -1,3 +1,6 @@
+// Distributed under MIT License, see LICENSE file
+// (c) 2018 Jakub Skowron, jskowron183@gmail.com
+
 #include "test_strings.h"
 
 namespace test_strings {

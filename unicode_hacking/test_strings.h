@@ -1,3 +1,6 @@
+// Distributed under MIT License, see LICENSE file
+// (c) 2018 Jakub Skowron, jskowron183@gmail.com
+
 #ifndef TEST_STRINGS_H
 #define TEST_STRINGS_H
 

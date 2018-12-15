@@ -1,3 +1,6 @@
+// Distributed under MIT License, see LICENSE file
+// (c) 2018 Jakub Skowron, jskowron183@gmail.com
+
 #ifndef TERMINAL_SIZE_H
 #define TERMINAL_SIZE_H
 
