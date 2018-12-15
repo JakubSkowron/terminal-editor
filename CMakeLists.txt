@@ -77,6 +77,8 @@ set(LIB_SOURCES
 
     text_buffer.h
     text_buffer.cpp
+
+	zerrors.h
     )
 
 if(WIN32)
