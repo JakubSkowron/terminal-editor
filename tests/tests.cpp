@@ -197,9 +197,180 @@ TEST_CASE("Text deletion works", "[text-buffer]") {
         auto stringDeleted = textBuffer.deleteText({0, 4}, {3, 2});
 
         REQUIRE(stringDeleted == "56\nabcdef\nABCDEF\n!@");
+        REQUIRE(textBuffer.getNumberOfLines() == 2);
+        REQUIRE(textBuffer.getLine(0) == "1234#$%^");
+        REQUIRE(textBuffer.getLine(1) == "");
+    }
+}
+
+TEST_CASE("Undo/redo works", "[undoable-text-buffer]") {
+    SECTION("Undo after load.") {
+        UndoableTextBuffer textBuffer;
+        textBuffer.loadFile("test-data/four-lines-and-lf.txt");
+        auto undoed = textBuffer.undo();
+        auto undoed2 = textBuffer.undo();
+
+        REQUIRE(undoed == false);
+        REQUIRE(undoed2 == false);
+        REQUIRE(textBuffer.getNumberOfLines() == 5);
+        REQUIRE(textBuffer.getLine(0) == "123456");
+        REQUIRE(textBuffer.getLine(1) == "abcdef");
+        REQUIRE(textBuffer.getLine(2) == "ABCDEF");
+        REQUIRE(textBuffer.getLine(3) == "!@#$%^");
+        REQUIRE(textBuffer.getLine(4) == "");
+    }
+
+    SECTION("Redo after load.") {
+        UndoableTextBuffer textBuffer;
+        textBuffer.loadFile("test-data/four-lines-and-lf.txt");
+        auto redoed = textBuffer.redo();
+        auto redoed2 = textBuffer.redo();
+
+        REQUIRE(redoed == false);
+        REQUIRE(redoed2 == false);
+        REQUIRE(textBuffer.getNumberOfLines() == 5);
+        REQUIRE(textBuffer.getLine(0) == "123456");
+        REQUIRE(textBuffer.getLine(1) == "abcdef");
+        REQUIRE(textBuffer.getLine(2) == "ABCDEF");
+        REQUIRE(textBuffer.getLine(3) == "!@#$%^");
+        REQUIRE(textBuffer.getLine(4) == "");
+    }
+
+    SECTION("Undo/Redo multi line insert.") {
+        UndoableTextBuffer textBuffer;
+        textBuffer.loadFile("test-data/four-lines-and-lf.txt");
+        textBuffer.insertText({1, 3}, "Be\nMy\nBaby");
+        auto undoed = textBuffer.undo();
+        auto undoed2 = textBuffer.undo();
+
+        REQUIRE(undoed == true);
+        REQUIRE(undoed2 == false);
+        REQUIRE(textBuffer.getNumberOfLines() == 5);
+        REQUIRE(textBuffer.getLine(0) == "123456");
+        REQUIRE(textBuffer.getLine(1) == "abcdef");
+        REQUIRE(textBuffer.getLine(2) == "ABCDEF");
+        REQUIRE(textBuffer.getLine(3) == "!@#$%^");
+        REQUIRE(textBuffer.getLine(4) == "");
+
+        auto redoed = textBuffer.redo();
+        auto redoed2 = textBuffer.redo();
+
+        REQUIRE(redoed == true);
+        REQUIRE(redoed2 == false);
+        REQUIRE(textBuffer.getNumberOfLines() == 7);
+        REQUIRE(textBuffer.getLine(0) == "123456");
+        REQUIRE(textBuffer.getLine(1) == "abcBe");
+        REQUIRE(textBuffer.getLine(2) == "My");
+        REQUIRE(textBuffer.getLine(3) == "Babydef");
+        REQUIRE(textBuffer.getLine(4) == "ABCDEF");
+        REQUIRE(textBuffer.getLine(5) == "!@#$%^");
+        REQUIRE(textBuffer.getLine(6) == "");
+    }
+
+    SECTION("Undo/Redo multi line delete.") {
+        UndoableTextBuffer textBuffer;
+        textBuffer.loadFile("test-data/four-lines-and-lf.txt");
+        textBuffer.deleteText({1, 3}, {3, 2});
+        auto undoed = textBuffer.undo();
+        auto undoed2 = textBuffer.undo();
+
+        REQUIRE(undoed == true);
+        REQUIRE(undoed2 == false);
+        REQUIRE(textBuffer.getNumberOfLines() == 5);
+        REQUIRE(textBuffer.getLine(0) == "123456");
+        REQUIRE(textBuffer.getLine(1) == "abcdef");
+        REQUIRE(textBuffer.getLine(2) == "ABCDEF");
+        REQUIRE(textBuffer.getLine(3) == "!@#$%^");
+        REQUIRE(textBuffer.getLine(4) == "");
+
+        auto redoed = textBuffer.redo();
+        auto redoed2 = textBuffer.redo();
+
+        REQUIRE(redoed == true);
+        REQUIRE(redoed2 == false);
         REQUIRE(textBuffer.getNumberOfLines() == 3);
-        REQUIRE(textBuffer.getLine(0) == "1234");
-        REQUIRE(textBuffer.getLine(1) == "#$%^");
+        REQUIRE(textBuffer.getLine(0) == "123456");
+        REQUIRE(textBuffer.getLine(1) == "abc#$%^");
         REQUIRE(textBuffer.getLine(2) == "");
+    }
+
+    SECTION("Multiple undo.") {
+        UndoableTextBuffer textBuffer;
+        textBuffer.loadFile("test-data/four-lines-and-lf.txt");
+        textBuffer.insertText({1, 2}, "A");
+        textBuffer.deleteText({2, 2}, {2, 4});
+        textBuffer.insertText({2, 2}, "X");
+
+        auto undoed = textBuffer.undo();
+        REQUIRE(undoed == true);
+        REQUIRE(textBuffer.getNumberOfLines() == 5);
+        REQUIRE(textBuffer.getLine(0) == "123456");
+        REQUIRE(textBuffer.getLine(1) == "abAcdef");
+        REQUIRE(textBuffer.getLine(2) == "ABEF");
+        REQUIRE(textBuffer.getLine(3) == "!@#$%^");
+        REQUIRE(textBuffer.getLine(4) == "");
+
+        auto undoed2 = textBuffer.undo();
+        REQUIRE(undoed2 == true);
+        REQUIRE(textBuffer.getNumberOfLines() == 5);
+        REQUIRE(textBuffer.getLine(0) == "123456");
+        REQUIRE(textBuffer.getLine(1) == "abAcdef");
+        REQUIRE(textBuffer.getLine(2) == "ABCDEF");
+        REQUIRE(textBuffer.getLine(3) == "!@#$%^");
+        REQUIRE(textBuffer.getLine(4) == "");
+
+        auto undoed3 = textBuffer.undo();
+        REQUIRE(undoed3 == true);
+        REQUIRE(textBuffer.getNumberOfLines() == 5);
+        REQUIRE(textBuffer.getLine(0) == "123456");
+        REQUIRE(textBuffer.getLine(1) == "abcdef");
+        REQUIRE(textBuffer.getLine(2) == "ABCDEF");
+        REQUIRE(textBuffer.getLine(3) == "!@#$%^");
+        REQUIRE(textBuffer.getLine(4) == "");
+
+        auto undoed4 = textBuffer.undo();
+        REQUIRE(undoed4 == false);
+    }
+
+    SECTION("Multiple redo.") {
+        UndoableTextBuffer textBuffer;
+        textBuffer.loadFile("test-data/four-lines-and-lf.txt");
+        textBuffer.insertText({1, 2}, "A");
+        textBuffer.deleteText({2, 2}, {2, 4});
+        textBuffer.insertText({2, 2}, "X");
+
+        textBuffer.undo();
+        textBuffer.undo();
+        textBuffer.undo();
+
+        auto redoed = textBuffer.redo();
+        REQUIRE(redoed == true);
+        REQUIRE(textBuffer.getNumberOfLines() == 5);
+        REQUIRE(textBuffer.getLine(0) == "123456");
+        REQUIRE(textBuffer.getLine(1) == "abAcdef");
+        REQUIRE(textBuffer.getLine(2) == "ABCDEF");
+        REQUIRE(textBuffer.getLine(3) == "!@#$%^");
+        REQUIRE(textBuffer.getLine(4) == "");
+
+        auto redoed2 = textBuffer.redo();
+        REQUIRE(redoed2 == true);
+        REQUIRE(textBuffer.getNumberOfLines() == 5);
+        REQUIRE(textBuffer.getLine(0) == "123456");
+        REQUIRE(textBuffer.getLine(1) == "abAcdef");
+        REQUIRE(textBuffer.getLine(2) == "ABEF");
+        REQUIRE(textBuffer.getLine(3) == "!@#$%^");
+        REQUIRE(textBuffer.getLine(4) == "");
+
+        auto redoed3 = textBuffer.redo();
+        REQUIRE(redoed3 == true);
+        REQUIRE(textBuffer.getNumberOfLines() == 5);
+        REQUIRE(textBuffer.getLine(0) == "123456");
+        REQUIRE(textBuffer.getLine(1) == "abAcdef");
+        REQUIRE(textBuffer.getLine(2) == "ABXEF");
+        REQUIRE(textBuffer.getLine(3) == "!@#$%^");
+        REQUIRE(textBuffer.getLine(4) == "");
+
+        auto redoed4 = textBuffer.redo();
+        REQUIRE(redoed4 == false);
     }
 }

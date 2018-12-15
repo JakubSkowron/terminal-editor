@@ -45,19 +45,24 @@ struct Position {
     }
 };
 
+/// This class is an editable container of lines of text.
+/// Lines are split by LF characters (which are not stored).
+/// This class does not interpret character data (treats them as bytes).
+/// @note This is a very straighforward implementation. It is not efficient.
 class TextBuffer {
 private:
     std::vector<std::string> lines;
 
 public:
+    /// Empty virtual destructor.
+    virtual ~TextBuffer() {}
+
     /// Replaces contents of this text buffer with contents of given file.
     /// @param fileName     Name of file to load.
-    void loadFile(const std::string& fileName);
+    virtual void loadFile(const std::string& fileName);
 
     /// Returns number of lines in this text buffer.
-    /// @todo How many lines has an empty file?
-    ///       How many lines has a file without LF's?
-    ///       How many lines has a file with one character, and LF?
+    /// @note It will always be 1 + number of LF's in file.
     int getNumberOfLines() const;
 
     /// Returns length of the longest line.
@@ -81,16 +86,16 @@ public:
     /// @param position     Position to insert into.
     /// @param text         Text to insert. May contain new lines.
     /// @returns Position of the end of inserted text in the new text buffer.
-    Position insertText(Position position, const std::string& text);
+    virtual Position insertText(Position position, const std::string& text);
 
-    /// Deletes text between two positions: from positionStart (inclusive) to positionEnd (exclusive).
+    /// Deletes text between two positions: from startPosition (inclusive) to endPosition (exclusive).
     /// positions are first clamped to valid range.
     /// positions can be on different lines.
-    /// If positionStart is past positionEnd no characters are removed.
-    /// @param positionStart    Start position. This is first position that will be removed.
-    /// @param positionEnd      End position. This is first position that will not be removed.
+    /// If startPosition is past endPosition no characters are removed.
+    /// @param startPosition    Start position. This is first position that will be removed.
+    /// @param endPosition      End position. This is first position that will not be removed.
     /// @returns Characters removed (including newlines).
-    std::string deleteText(Position positionStart, Position positionEnd);
+    virtual std::string deleteText(Position startPosition, Position endPosition);
 
     /// Clamps position to a valid range, so:
     /// - row is clamped to range from 0 to number of lines (inclusive),
@@ -107,6 +112,48 @@ public:
     /// Returns true if position is past the end of text.
     /// @todo Remove. Should not be necessary.
     bool isPastEnd(Position position) const;
+};
+
+/// UndoableTextBuffer is a TextBuffer that supports Undo and Redo operations.
+/// @note This is a very straighforward implementation. It is not efficient.
+class UndoableTextBuffer : public TextBuffer {
+private:
+    /// Edit action can represent insertion or deletion of text.
+    struct EditAction {
+        bool insertion;         ///< True if this is insertion. False if it's deletion.
+        Position startPosition; ///< Start position of inserted/deleted text.
+        Position endPosition;   ///< End position of inserted text (after insertion) or deleted text (before deletion).
+        std::string text;       ///< Inserted/deleted text.
+    };
+
+    std::vector<EditAction> m_actionBuffer; ///< List of edit actions performed since loading this buffer.
+                                            ///< @note Performing any edit action clears all actions after m_redoPosition.
+    int m_redoPosition = 0;                 ///< Index in m_actionBuffer for Redo operation.
+                                            ///< This is decremented after Undo, and incremented after Redo. After edit operations this will equal size of m_actionBuffer.
+
+public:
+    /// Replaces contents of this text buffer with contents of given file.
+    /// Clears Undo buffer.
+    /// @param fileName     Name of file to load.
+    void loadFile(const std::string& fileName) override;
+
+    /// Inserts given text into this text buffer.
+    /// @see TextBuffer::insertText().
+    /// Adds insertion action to undo buffer (unless this insertion is a no-op).
+    Position insertText(Position position, const std::string& text) override;
+
+    /// Deletes text between two positions: from startPosition (inclusive) to endPosition (exclusive).
+    /// @see TextBuffer::deleteText().
+    /// Adds deletion action to undo buffer (unless this deletion is a no-op).
+    std::string deleteText(Position startPosition, Position endPosition) override;
+
+    /// Performs Undo operation.
+    /// @returns True if undo was performed. False if there was nothing to undo.
+    bool undo();
+
+    /// Performs Redo operation.
+    /// @returns True if redo was performed. False if there was nothing to redo.
+    bool redo();
 };
 
 } // namespace terminal_editor

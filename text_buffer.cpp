@@ -1,5 +1,7 @@
 #include "text_buffer.h"
 
+#include "zerrors.h"
+
 #include <fstream>
 #include <sstream>
 #include <algorithm>
@@ -114,39 +116,40 @@ Position TextBuffer::insertText(Position position, const std::string& text) {
     return endPosition;
 }
 
-std::string TextBuffer::deleteText(Position positionStart, Position positionEnd) {
-    positionStart = clampPosition(positionStart);
-    positionEnd = clampPosition(positionEnd);
+std::string TextBuffer::deleteText(Position startPosition, Position endPosition) {
+    startPosition = clampPosition(startPosition);
+    endPosition = clampPosition(endPosition);
 
-    if (positionStart.row == positionEnd.row) {
-        auto& line = lines[positionStart.row];
-        auto numCharsToDelete = positionEnd.column - positionStart.column;
+    if (startPosition.row == endPosition.row) {
+        auto& line = lines[startPosition.row];
+        auto numCharsToDelete = endPosition.column - startPosition.column;
         if (numCharsToDelete <= 0)
             return {};
 
-        auto removedString = line.substr(positionStart.column, numCharsToDelete);
-        line.erase(positionStart.column, numCharsToDelete);
+        auto removedString = line.substr(startPosition.column, numCharsToDelete);
+        line.erase(startPosition.column, numCharsToDelete);
         return removedString;
     }
 
-    if (positionStart.row > positionEnd.row)
+    if (startPosition.row > endPosition.row)
         return {};
 
-    // Remove all characters in line after positionStart.
-    // Remove all characters in line before positionEnd.
+    // Remove all characters in line after startPosition.
+    // Remove all characters in line before endPosition.
     // Remove all lines between start and end lines.
+    // Concatenate start and end lines.
 
-    auto& startLine = lines[positionStart.row];
-    int startCharsToDelete = static_cast<int>(startLine.size()) - positionStart.column;
-    auto startRemovedString = startLine.substr(positionStart.column, startCharsToDelete);
-    startLine.erase(positionStart.column, startCharsToDelete);
+    auto& startLine = lines[startPosition.row];
+    int startCharsToDelete = static_cast<int>(startLine.size()) - startPosition.column;
+    auto startRemovedString = startLine.substr(startPosition.column, startCharsToDelete);
+    startLine.erase(startPosition.column, startCharsToDelete);
 
-    auto& endLine = lines[positionEnd.row];
-    auto endRemovedString = endLine.substr(0, positionEnd.column);
-    endLine.erase(0, positionEnd.column);
+    auto& endLine = lines[endPosition.row];
+    auto endRemovedString = endLine.substr(0, endPosition.column);
+    endLine.erase(0, endPosition.column);
 
-    auto lineRangeStart = lines.begin() + positionStart.row + 1;
-    auto lineRangeEnd = lines.begin() + positionEnd.row;
+    auto lineRangeStart = lines.begin() + startPosition.row + 1;
+    auto lineRangeEnd = lines.begin() + endPosition.row;
 
     std::stringstream linesRemoved;
     linesRemoved << startRemovedString << '\n';
@@ -156,7 +159,8 @@ std::string TextBuffer::deleteText(Position positionStart, Position positionEnd)
     }
     linesRemoved << endRemovedString;
 
-    lines.erase(lineRangeStart, lineRangeEnd);
+    startLine += endLine;
+    lines.erase(lineRangeStart, lineRangeEnd + 1);
 
     return linesRemoved.str();
 }
@@ -198,6 +202,88 @@ bool TextBuffer::isPastEnd(Position position) const {
         return true;
 
     return false;
+}
+
+void UndoableTextBuffer::loadFile(const std::string& fileName) {
+    this->TextBuffer::loadFile(fileName);
+    m_actionBuffer.clear();
+    m_redoPosition = 0;
+}
+
+Position UndoableTextBuffer::insertText(Position position, const std::string& text) {
+    position = clampPosition(position); // We must clamp position first, because this will be the real insertion position.
+    if (text.empty()) {
+        return position;
+    }
+
+    auto endPosition = this->TextBuffer::insertText(position, text);
+
+    EditAction insertion = { true, position, endPosition, text };
+    m_actionBuffer.push_back(insertion);
+    m_redoPosition = static_cast<int>(m_actionBuffer.size());
+
+    return endPosition;
+}
+
+std::string UndoableTextBuffer::deleteText(Position startPosition, Position endPosition) {
+    // We must clamp positions first, because those will be the real deletion positions.
+    startPosition = clampPosition(startPosition);
+    endPosition = clampPosition(endPosition);
+
+    if (startPosition.row == endPosition.row) {
+        if (startPosition.column >= endPosition.column)
+            return {};
+    }
+
+    if (startPosition.row > endPosition.row)
+        return {};
+
+    auto deletedText = this->TextBuffer::deleteText(startPosition, endPosition);
+
+    EditAction deletion = { false, startPosition, endPosition, deletedText };
+    m_actionBuffer.push_back(deletion);
+    m_redoPosition = static_cast<int>(m_actionBuffer.size());
+
+    return deletedText;
+}
+
+bool UndoableTextBuffer::undo() {
+    if (m_redoPosition <= 0)
+        return false;
+
+    m_redoPosition--;
+
+    auto& action = m_actionBuffer[m_redoPosition];
+
+    if (action.insertion) {
+        // Delete inserted text.
+        auto deletedText = this->TextBuffer::deleteText(action.startPosition, action.endPosition);
+        ZASSERT(deletedText == action.text);
+    } else {
+        // Insert deleted text.
+        auto endPosition = this->TextBuffer::insertText(action.startPosition, action.text);
+        ZASSERT(endPosition == action.endPosition);
+    }
+
+    return true;
+}
+
+bool UndoableTextBuffer::redo() {
+    if (m_redoPosition >= static_cast<int>(m_actionBuffer.size()))
+        return false;
+
+    auto& action = m_actionBuffer[m_redoPosition];
+    m_redoPosition++;
+
+    if (action.insertion) {
+        // Re-insert text.
+        this->TextBuffer::insertText(action.startPosition, action.text);
+    } else {
+        // Re-delete text.
+        this->TextBuffer::deleteText(action.startPosition, action.endPosition);
+    }
+
+    return true;
 }
 
 } // namespace terminal_editor
