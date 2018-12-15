@@ -3,7 +3,9 @@
 set(APP_NAME editor-tests)
 
 set(APP_SOURCES
-    tests.cpp
+    main-tests.cpp
+    textbuffer-tests.cpp
+    zerrors-tests.cpp
     )
 
 add_executable(${APP_NAME} ${APP_SOURCES})

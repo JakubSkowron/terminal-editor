@@ -46,6 +46,8 @@ namespace terminal_editor {
 /// Generic exception class.
 /// Useful also as a base class for custom exceptions.
 /// ZTHROW() and ZASSERT() macros below assume that passed exception is a GenericException (or it's subclass).
+/// Example derived class:
+///   class DerivedException : public GenericException {};
 class GenericException : public std::exception {
     std::string message;
 
@@ -80,7 +82,7 @@ public:
 
 #if ZVA_OPT_SUPPORTED
         
-#define ZTHROW(...) (terminal_editor::make_throw_helper(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: ").message __VA_OPT__(,) __VA_ARGS__)
+#define ZTHROW(...) (terminal_editor::make_throw_helper(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: " __VA_OPT__(,) __VA_ARGS__).message)
 
 #define ZASSERT(arg0, ...) \
     if ((arg0) __VA_OPT__(,) __VA_ARGS__) {             \
@@ -89,7 +91,7 @@ public:
 
 #elif defined(_MSC_VER)
         
-#define ZTHROW(...) (terminal_editor::make_throw_helper(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: ").message, __VA_ARGS__)
+#define ZTHROW(...) (terminal_editor::make_throw_helper(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: ", __VA_ARGS__).message)
 
 #define ZASSERT(arg0, ...) \
     if ((arg0), __VA_ARGS__) {             \
@@ -98,7 +100,7 @@ public:
 
 #else
         
-#define ZTHROW(...) (terminal_editor::make_throw_helper(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: ").message, ## __VA_ARGS__)
+#define ZTHROW(...) (terminal_editor::make_throw_helper(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: ", ## __VA_ARGS__).message)
 
 #define ZASSERT(arg0, ...) \
     if ((arg0), ## __VA_ARGS__) {             \
@@ -143,8 +145,12 @@ public:
     }
 };
 
+inline ThrowHelper<GenericException> make_throw_helper(const char* messageBase) {
+    return ThrowHelper<GenericException>(terminal_editor::GenericException(), messageBase);
+}
+
 template<typename Exc>
-ThrowHelper<Exc> make_throw_helper(const char* messageBase, Exc exc = terminal_editor::GenericException()) {
+ThrowHelper<Exc> make_throw_helper(const char* messageBase, Exc exc) {
     return ThrowHelper<Exc>(std::move(exc), messageBase);
 }
 
