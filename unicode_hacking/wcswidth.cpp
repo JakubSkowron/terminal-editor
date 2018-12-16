@@ -34,7 +34,7 @@ void diagnose_character_by_character(const char* s) {
     int n = std::mbtowc(&wc_buf, p, MB_CUR_MAX);
     if (n == 0) break;  // end of string
     if (n == -1) {
-      std::printf("byte: 0x%02" PRIx8 "\n", *p);
+      std::printf("byte: 0x%02" PRIx8 "\n", (std::uint8_t)(*p));
       p += 1;
       continue;  // try next byte
     }
