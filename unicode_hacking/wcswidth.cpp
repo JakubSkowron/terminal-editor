@@ -3,6 +3,7 @@
 
 #include <wchar.h>  //for POSIX ::wcswidth
 
+#include <cinttypes>
 #include <clocale>
 #include <cstdio>
 #include <cstdlib>
@@ -33,7 +34,7 @@ void diagnose_character_by_character(const char* s) {
     int n = std::mbtowc(&wc_buf, p, MB_CUR_MAX);
     if (n == 0) break;  // end of string
     if (n == -1) {
-      std::printf("byte: 0x%02x\n", *p);
+      std::printf("byte: 0x%02" PRIx8 "\n", *p);
       p += 1;
       continue;  // try next byte
     }
@@ -48,7 +49,7 @@ void diagnose_character_by_character(const char* s) {
 }
 
 int main(int argc, char** argv) {
-  const char* s = argv[1] ? argv[1] : u8"véd [b̪̆e̝ːˀð̠˕ˠ]";
+  const char* s = argv[1] ? argv[1] : u8"véd [b̪̆e̝ːˀð̠˕ˠ] \xc1\x81";
 
   std::setlocale(LC_ALL, "en_US.UTF8");
 
