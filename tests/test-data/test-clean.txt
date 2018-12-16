@@ -1,0 +1,18 @@
+The Latin alphabet
+chrząszcz brzmi w trzcinie [ˈxʂɔw̃ʂt͡ʂ ˈbʐmi fˈtʂt͡ɕiɲɛ], isiXhosa [isikǁʰɔ́ːsa], véd [b̪̆e̝ːˀð̠˕ˠ]
+ภาษาไทย หรือ ภาษาไทยกลาง
+한국어(韓國語) 또는 한국말(韓國말), 조선말(朝鮮말)
+Tiếng Việt, còn gọi tiếng Việt Nam hay Việt ngữ
+Tiếng Việt, còn gọi tiếng Việt Nam hay Việt ngữ
+日本語, hiragana: わからない, katakana: スミミザクラ
+हिन्दी विश्व की एक प्रमुख भाषा
+ఆంధ్ర ప్రదేశ్, తెలంగాణ రాష్ట్రాల అధికార భాష
+𐌀𐌁𐌂𐌃𐌄𐌅𐌆𐌇𐌈𐌉𐌊𐌋𐌌𐌍𐌎𐌏𐌐𐌑𐌒𐌓𐌔𐌕𐌖𐌗
+😉😊😋😌😍😎😏😐😑😒😓😔😕😖😗😘😙😚😛😜
+🌍︎🌎︎🌏︎🌕︎🌜︎🌡︎🌤︎🌥︎🌦︎🌧︎🌨︎🌩︎ 🌍️🌎️🌏️🌕️🌜️🌡️🌤️🌥️🌦️🌧️🌨️🌩️
+👍️👍️🏻👍️🏼👍️🏽👍️🏾👍️🏿
+erase display: [2J, change colors: [31;43m, OSC: ]0;text
+tab: 	, C0 controls: , C1 controls: , 
+LF
+VTFFCRNELLS PS CR+LF
+

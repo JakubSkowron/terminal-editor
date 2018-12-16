@@ -79,6 +79,9 @@ set(LIB_SOURCES
     text_buffer.h
     text_buffer.cpp
 
+    text_renderer.h
+    text_renderer.cpp
+
     zerrors.h
     )
 
