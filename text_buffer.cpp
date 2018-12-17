@@ -4,6 +4,7 @@
 #include "text_buffer.h"
 
 #include "zerrors.h"
+#include "file_utilities.h"
 
 #include <fstream>
 #include <sstream>
@@ -31,12 +32,7 @@ std::vector<std::string> splitString(const std::string& text, char delimiter) {
 }
 
 void TextBuffer::loadFile(const std::string& fileName) {
-    std::ifstream input;
-    input.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-    input.open(fileName, std::ios::binary);
-
-    std::string text((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>()); // @todo Super inefficient.
-
+    auto text = loadFileAsString(fileName);
     lines = splitString(text, '\n');
 }
 

@@ -82,6 +82,9 @@ set(LIB_SOURCES
     text_renderer.h
     text_renderer.cpp
 
+    file_utilities.h
+    file_utilities.cpp
+
     zerrors.h
     )
 
