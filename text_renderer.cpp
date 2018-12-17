@@ -3,12 +3,17 @@
 namespace terminal_editor {
 
 /// Returns name of passed control character, or nullptr if given byte was not recognized.
-/// See: https://en.wikipedia.org/wiki/C0_and_C1_control_codes
-const char* controlCharacterName(uint8_t byte) {
-    if (byte == 0x09)
-        return u8"TAB";
+/// ISO 30112 defines POSIX control characters as Unicode characters U+0000..U+001F, U+007F..U+009F, U+2028, and U+2029 (Unicode classes Cc, Zl, and Zp) "
+/// See also: https://en.wikipedia.org/wiki/C0_and_C1_control_codes
+/// @param codePoint    Code point for which name to return.
+const char* controlCharacterName(uint32_t codePoint) {
+    if (codePoint == 0x2028)
+        return u8"LS";
 
-    if (byte == 0x7F)
+    if (codePoint == 0x2029)
+        return u8"PS";
+
+    if (codePoint == 0x7F)
         return u8"DEL";
 
     static const char* c0Names[32] = {
@@ -81,11 +86,11 @@ const char* controlCharacterName(uint8_t byte) {
         u8"APC",
     };
 
-    if (byte < 0x20)
-        return c0Names[byte];
+    if (codePoint < 0x20)
+        return c0Names[codePoint];
 
-    if ( (byte >= 0x80) && (byte <= 0x9F) )
-        return c1Names[byte - 0x80];
+    if ( (codePoint >= 0x80) && (codePoint <= 0x9F) )
+        return c1Names[codePoint - 0x80];
 
     return nullptr;
 }
@@ -156,23 +161,6 @@ CodePointInfo getFirstCodePoint(const std::string& data) {
     if (sequenceLen > 4) {
         addError() << u8"UTF-8 sequences of length greater than 4 are invalid.";
     }
-
-    #if 0
-    This code is wrong. Do not know why...
-    // Only shortest representation of a code point is allowed.
-    // In other words if first byte has content zero, then it must be equal to zero.
-
-    if (firstByte == 0b11000000)
-        addError() << u8"Invalid because shorter representation of this code point exists.";
-    if (firstByte == 0b11100000)
-        addError() << u8"Invalid because shorter representation of this code point exists.";
-    if (firstByte == 0b11110000)
-        addError() << u8"Invalid because shorter representation of this code point exists.";
-    if (firstByte == 0b11111000)
-        addError() << u8"Invalid because shorter representation of this code point exists.";
-    if (firstByte == 0b11111100)
-        addError() << u8"Invalid because shorter representation of this code point exists.";
-    #endif
 
     auto bytesToConsume = sequenceLen;
     if (sequenceLen > static_cast<int>(data.size())) {
@@ -260,7 +248,8 @@ std::string analyzeData(const std::string& inputData) {
 
         if (codePointInfo.valid) {
             auto value = codePointInfo.codePoint;
-            auto controlName = (value <= 0xFF) ? controlCharacterName(static_cast<uint8_t>(value)) : nullptr;
+            auto controlName = controlCharacterName(value);
+
             if (value == 0x0A) {
                 result.append(u8"\n");
             }
