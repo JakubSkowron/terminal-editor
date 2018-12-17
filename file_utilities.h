@@ -1,5 +1,7 @@
 #pragma once
 
+#include "zerrors.h"
+
 #include <string>
 
 namespace terminal_editor {
