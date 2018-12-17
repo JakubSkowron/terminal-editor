@@ -34,3 +34,8 @@
 # Running tests
 
 `editor-tests` executable must be run inside `tests/` directory, because it needs to access `tests/test-data`.
+
+# Used third party libraries
+
+1. Catch2 by Phil Nash (Boost license).
+2. nlohmann/json by Niels Lohmann (MIT license).

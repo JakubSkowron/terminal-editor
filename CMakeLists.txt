@@ -82,10 +82,15 @@ set(LIB_SOURCES
     text_renderer.h
     text_renderer.cpp
 
+    editor_config.h
+    editor_config.cpp
+
     file_utilities.h
     file_utilities.cpp
 
+    zpreprocessor.h
     zerrors.h
+    zlogging.h
     )
 
 if(WIN32)
@@ -94,6 +99,7 @@ else()
 endif()
 
 add_library(${LIB_NAME} ${LIB_SOURCES})
+target_include_directories(${LIB_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/third_party/nlohmann-json-3.4.0")
 set_target_properties(${LIB_NAME} PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}")
 SetCompilerOptions(${LIB_NAME})
 
