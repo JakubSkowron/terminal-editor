@@ -8,14 +8,14 @@ using namespace terminal_editor;
 
 TEST_CASE("Hack", "[analyzeData]") {
     SECTION("test-dirty.txt") {
-        auto text = loadFileAsString("test-data/test-dirty.txt");
+        auto text = readFileAsString("test-data/test-dirty.txt");
         auto analyzed = terminal_editor::analyzeData(text);
-        saveStringToFile("test-data/test-dirty-analyzed.txt", analyzed);
+        writeStringToFile("test-data/test-dirty-analyzed.txt", analyzed);
     }
 
     SECTION("test-clean.txt") {
-        auto text = loadFileAsString("test-data/test-clean.txt");
+        auto text = readFileAsString("test-data/test-clean.txt");
         auto analyzed = terminal_editor::analyzeData(text);
-        saveStringToFile("test-data/test-clean-analyzed.txt", analyzed);
+        writeStringToFile("test-data/test-clean-analyzed.txt", analyzed);
     }
 }

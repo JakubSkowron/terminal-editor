@@ -32,7 +32,7 @@ std::vector<std::string> splitString(const std::string& text, char delimiter) {
 }
 
 void TextBuffer::loadFile(const std::string& fileName) {
-    auto text = loadFileAsString(fileName);
+    auto text = readFileAsString(fileName);
     lines = splitString(text, '\n');
 }
 

@@ -7,7 +7,7 @@
 
 namespace terminal_editor {
 
-std::string loadFileAsString(const std::string& fileName) {
+std::string readFileAsString(const std::string& fileName) {
     std::ifstream input;
     input.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 
@@ -15,7 +15,7 @@ std::string loadFileAsString(const std::string& fileName) {
         input.open(fileName, std::ios::binary);
     }
     catch (const std::exception& exc) {
-        ZTHROW() << "Could not open input file: '" << fileName << "'. Error: " << exc.what();
+        ZTHROW(FileNotFoundException()) << "Could not open input file: '" << fileName << "'. Error: " << exc.what();
     }
 
     try {
@@ -28,7 +28,7 @@ std::string loadFileAsString(const std::string& fileName) {
     }
 }
 
-void saveStringToFile(const std::string& fileName, const std::string& text) {
+void writeStringToFile(const std::string& fileName, const std::string& text) {
     std::ofstream output;
     output.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 

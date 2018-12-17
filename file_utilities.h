@@ -4,12 +4,17 @@
 
 namespace terminal_editor {
 
+/// Exception thrown when a file is missing.
+class FileNotFoundException : public GenericException {};
+
 /// Loads given file into a string.
 /// Throws on errors.
-std::string loadFileAsString(const std::string& fileName);
+/// Throws FileNotFoundException if the file is not found.
+std::string readFileAsString(const std::string& fileName);
 
 /// Saves given string into a file.
+/// Replaces any previous file contents.
 /// Throws on errors.
-void saveStringToFile(const std::string& fileName, const std::string& text);
+void writeStringToFile(const std::string& fileName, const std::string& text);
 
 } // namespace terminal_editor
