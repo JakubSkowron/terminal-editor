@@ -1,11 +1,9 @@
 #include "text_renderer.h"
 
+#include "zerrors.h"
+
 namespace terminal_editor {
 
-/// Returns name of passed control character, or nullptr if given byte was not recognized.
-/// ISO 30112 defines POSIX control characters as Unicode characters U+0000..U+001F, U+007F..U+009F, U+2028, and U+2029 (Unicode classes Cc, Zl, and Zp) "
-/// See also: https://en.wikipedia.org/wiki/C0_and_C1_control_codes
-/// @param codePoint    Code point for which name to return.
 const char* controlCharacterName(uint32_t codePoint) {
     if (codePoint == 0x2028)
         return u8"LS";
@@ -95,21 +93,7 @@ const char* controlCharacterName(uint32_t codePoint) {
     return nullptr;
 }
 
-struct CodePointInfo {
-    bool valid;         ///< True if valid code point was decoded. False otherwise.
-    int numBytes;       ///< Number of bytes consumed from the input data. Will be from 1 to 6.
-    std::string info;   ///< Arbitrary information about consumed bytes. If 'valid' is false will contain error information.
-    uint32_t codePoint; ///< Decoded code point. Valid only if 'valid' is true.
-};
-
-/// Figures out what grapeheme is at the begining of data and returns it.
-/// See: https://pl.wikipedia.org/wiki/UTF-8#Spos%C3%B3b_kodowania
-/// @note All invalid byte sequences will be rendered as hex representations, with detailed explanation why it is invalid.
-///       All control characters will be rendered as symbolic replacements.
-///       Tab characters will be rendered as symbolic replacement.
-/// @param data     Input string. It is assumed to be in UTF-8, but can contain invalid characters (which will be rendered as special Graphemes).
-/// @param Returns number of bytes from input consumed.
-CodePointInfo getFirstCodePoint(const std::string& data) {
+CodePointInfo getFirstCodePoint(gsl::span<const char> data) {
     ZASSERT(!data.empty());
 
     bool hasErrors = false;         ///< True if any errors were reported.
@@ -117,7 +101,7 @@ CodePointInfo getFirstCodePoint(const std::string& data) {
 
     auto addError = [&hasErrors, &errors]() -> std::stringstream& { hasErrors = true; errors << '\n'; return errors; };
 
-    auto prepareErrorResult = [&hasErrors, &errors, &data](int bytesConsumed) -> CodePointInfo {
+    auto prepareErrorResult = [&hasErrors, &errors](int bytesConsumed) -> CodePointInfo {
         ZASSERT(hasErrors) << u8"Cannot prepare error result. No errors were reported.";
         auto errorsStr = errors.str();
         if (!errorsStr.empty())
@@ -125,7 +109,7 @@ CodePointInfo getFirstCodePoint(const std::string& data) {
         return { false, bytesConsumed, errorsStr, 0 };
     };
 
-    auto firstByte = static_cast<uint8_t>(data.front());
+    auto firstByte = static_cast<uint8_t>(data[0]);
 
     // 0xFF and 0xFE are not valid bytes in UTF-8 encoding.
     if (firstByte == 0xFF) {
@@ -163,7 +147,7 @@ CodePointInfo getFirstCodePoint(const std::string& data) {
     }
 
     auto bytesToConsume = sequenceLen;
-    if (sequenceLen > static_cast<int>(data.size())) {
+    if (sequenceLen > data.size()) {
         addError() << u8"Code point truncated. Sequence was expected to have " << sequenceLen << u8" bytes, but only " << data.size() << u8" bytes are available in input data.";
         bytesToConsume = static_cast<int>(data.size());
     }
@@ -239,7 +223,7 @@ CodePointInfo getFirstCodePoint(const std::string& data) {
     return { true, bytesToConsume, u8"", codePoint };
 }
 
-std::string analyzeData(const std::string& inputData) {
+std::string analyzeData(gsl::span<const char> inputData) {
     std::string result;
 
     auto data = inputData;
@@ -300,7 +284,7 @@ std::string analyzeData(const std::string& inputData) {
             result.append(u8"}");
         }
 
-        data.erase(0, codePointInfo.numBytes);
+        data = data.subspan(codePointInfo.numBytes);
     }
 
     return result;
