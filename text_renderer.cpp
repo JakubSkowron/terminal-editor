@@ -125,16 +125,14 @@ std::vector<Grapheme> renderLine(gsl::span<CodePointInfo> codePointInfos) {
 std::string renderGraphemes(gsl::span<const Grapheme> graphemes) {
     std::stringstream ss;
     for (const auto& grapheme : graphemes) {
-        switch (grapheme.kind) {
-            case GraphemeKind::REPLACEMENT: ss << "["; break;
-            case GraphemeKind::INVALID: ss << "["; break;
+        if (grapheme.kind != GraphemeKind::NORMAL) {
+            ss << "[";
         }
 
         ss << grapheme.rendered;
 
-        switch (grapheme.kind) {
-            case GraphemeKind::REPLACEMENT: ss << "]"; break;
-            case GraphemeKind::INVALID: ss << "]"; break;
+        if (grapheme.kind != GraphemeKind::NORMAL) {
+            ss << "]";
         }
     }
     return ss.str();

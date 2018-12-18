@@ -6,7 +6,7 @@
 #include <vector>
 #include <numeric>
 
-#include <wchar.h>  //for POSIX ::wcswidth
+#include <cwchar>
 #include <mk_wcswidth/mk_wcwidth.h>
 
 #include <gsl/span>
