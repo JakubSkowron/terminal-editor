@@ -39,3 +39,5 @@
 
 1. Catch2 by Phil Nash (Boost license).
 2. nlohmann/json by Niels Lohmann (MIT license).
+3. wcwidth by Markus Kuhn (custom license).
+4. GSL by Microsoft (MIT license).
