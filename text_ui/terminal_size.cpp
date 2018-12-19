@@ -1,14 +1,14 @@
 // Distributed under MIT License, see LICENSE file
 // (c) 2018 Jakub Skowron, jskowron183@gmail.com
 
+#include "terminal_size.h"
+
 #include <cstdio>
 
 #include <signal.h>
 #include <sys/ioctl.h>
 
-#include "terminal_size.h"
-
-/* This is linux only, not portable due to ioctl */
+/* Uses to ioctl (TIOCGWINSZ) - could be not portable */
 
 static std::function<void(int, int)> notify_window_changed;
 

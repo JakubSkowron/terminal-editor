@@ -1,11 +1,11 @@
 # compiled binary
 /terminal-editor
 /libterminal-editor-library.a
+/text_ui/libtext_ui.a
 /tests/editor-tests
 
 *.cmake
-/Makefile
-/tests/Makefile
+Makefile
 /CMakeCache.txt
 CMakeFiles/
 

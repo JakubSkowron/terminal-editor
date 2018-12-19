@@ -73,7 +73,6 @@ endfunction()
 set(LIB_NAME terminal-editor-library)
 
 set(LIB_SOURCES
-    terminal_size.h
     format_source.sh
 
     text_buffer.h
@@ -100,8 +99,6 @@ set(LIB_SOURCES
 if(WIN32)
     list(APPEND LIB_SOURCES "${CMAKE_SOURCE_DIR}/third_party/mk_wcswidth/mk_wcswidth/mk_wcwidth.h")
     list(APPEND LIB_SOURCES "${CMAKE_SOURCE_DIR}/third_party/mk_wcswidth/mk_wcswidth/mk_wcwidth.cpp")
-else()
-    list(APPEND LIB_SOURCES terminal_size.cpp)
 endif()
 
 add_library(${LIB_NAME} ${LIB_SOURCES})
@@ -111,6 +108,10 @@ target_include_directories(${LIB_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/third_party/g
 target_include_directories(${LIB_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/third_party/mk_wcswidth")
 target_include_directories(${LIB_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/third_party/nlohmann-json-3.4.0")
 SetCompilerOptions(${LIB_NAME})
+
+# text_ui library
+
+add_subdirectory(text_ui)
 
 # terminal-editor target
 
@@ -123,7 +124,7 @@ set(APP_SOURCES
     )
 
 add_executable(${APP_NAME} ${APP_SOURCES})
-target_link_libraries(${APP_NAME} PRIVATE ${LIB_NAME})
+target_link_libraries(${APP_NAME} PRIVATE ${LIB_NAME} text_ui)
 SetCompilerOptions(${APP_NAME})
 
 # Tests
