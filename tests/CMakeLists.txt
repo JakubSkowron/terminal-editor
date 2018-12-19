@@ -6,6 +6,7 @@ set(APP_SOURCES
     main-tests.cpp
     textbuffer-tests.cpp
     zerrors-tests.cpp
+    preprocessor-tests.cpp
     )
 
 add_executable(${APP_NAME} ${APP_SOURCES})
