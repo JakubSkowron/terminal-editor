@@ -75,35 +75,21 @@ public:
         std::abort(); \
     } while (false)
 
+#define ZTHROW(...)             ZOVERLOADMACRO(ZTHROW, 1, __VA_ARGS__)
+#define ZTHROW_0()              (terminal_editor::make_throw_helper(terminal_editor::GenericException(), __FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: ").message)
+#define ZTHROW_1(exc)           (terminal_editor::make_throw_helper(exc, __FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: ").message)
 
-#if ZVA_OPT_SUPPORTED
-        
-#define ZTHROW(...) (terminal_editor::make_throw_helper(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: " __VA_OPT__(,) __VA_ARGS__).message)
+#define ZASSERT(...)            ZOVERLOADMACRO(ZASSERT, 2, __VA_ARGS__)
 
-#define ZASSERT(arg0, ...) \
-    if ((arg0) __VA_OPT__(,) __VA_ARGS__) {             \
-    } else                  \
-        (ZTHROW(__VA_OPT__(arg0)) << "Condition is false: " << (#arg0 __VA_OPT__(,) #__VA_ARGS__) << " ")
+#define ZASSERT_1(cond)         \
+    if (cond) {                 \
+    } else                      \
+        (ZTHROW() << "Condition is false: " << #cond << " ")
 
-#elif defined(_MSC_VER)
-        
-#define ZTHROW(...) (terminal_editor::make_throw_helper(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: ", __VA_ARGS__).message)
-
-#define ZASSERT(arg0, ...) \
-    if ((arg0), __VA_ARGS__) {             \
-    } else                  \
-        (terminal_editor::make_throw_helper2(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: ", (arg0), __VA_ARGS__).message << "Condition is false: " << terminal_editor::select_helper(#arg0, #__VA_ARGS__ +0) << " ")
-
-#else
-        
-#define ZTHROW(...) (terminal_editor::make_throw_helper(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: ", ## __VA_ARGS__).message)
-
-#define ZASSERT(arg0, ...) \
-    if ((arg0), ## __VA_ARGS__) {             \
-    } else                  \
-        (terminal_editor::make_throw_helper2(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: ", (arg0), ## __VA_ARGS__).message << "Condition is false: " << terminal_editor::select_helper(#arg0, #__VA_ARGS__) << " ")
-
-#endif
+#define ZASSERT_2(exc, cond)    \
+    if (cond) {                 \
+    } else                      \
+        (ZTHROW(exc) << "Condition is false: " << #cond << " ")
 
 class AssertHelper {
 public:
@@ -141,39 +127,9 @@ public:
     }
 };
 
-inline ThrowHelper<GenericException> make_throw_helper(const char* messageBase) {
-    return ThrowHelper<GenericException>(terminal_editor::GenericException(), messageBase);
-}
-
 template<typename Exc>
-ThrowHelper<Exc> make_throw_helper(const char* messageBase, Exc exc) {
+ThrowHelper<Exc> make_throw_helper(Exc exc, const char* messageBase) {
     return ThrowHelper<Exc>(std::move(exc), messageBase);
-}
-
-inline ThrowHelper<GenericException> make_throw_helper2(const char* messageBase, bool cond) {
-    ZUNUSED(cond);
-    return ThrowHelper<GenericException>(terminal_editor::GenericException(), messageBase);
-}
-
-template<typename Exc>
-ThrowHelper<Exc> make_throw_helper2(const char* messageBase, Exc exc, bool cond) {
-    ZUNUSED(cond);
-    return ThrowHelper<Exc>(std::move(exc), messageBase);
-}
-
-inline const char* select_helper(const char* arg0, int arg1) {
-    ZUNUSED(arg1);
-    return arg0;
-}
-
-inline const char* select_helper(const char* arg0, const char (&arg1)[1]) {
-    ZUNUSED(arg1);
-    return arg0;
-}
-
-inline const char* select_helper(const char* arg0, const std::string& arg1) {
-    ZUNUSED(arg0);
-    return arg1.c_str();
 }
 
 } // namespace terminal_editor

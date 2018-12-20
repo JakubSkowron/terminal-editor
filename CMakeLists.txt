@@ -9,6 +9,7 @@ function(SetCompilerOptions targetName)
         set(optionsList
             /permissive-    # Enforces standards conformance.
             /Zc:__cplusplus # Set proper value of __cplusplus macro.
+            #/experimental:preprocessor  # Turn on new preprocessor.
 
             #/Wx     # Treat warnings as errors
             /W4     # All reasonable warnings
