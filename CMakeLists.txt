@@ -1,7 +1,42 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 project(TerminalEditor LANGUAGES CXX)
+include(CMakeDependentOption)
 enable_testing()
+
+# Address and thread sanitizers can't be used together.
+option(ENABLE_ADDRESS_SANITIZER "Enables address sanitizer")
+cmake_dependent_option(ENABLE_THREAD_SANITIZER "Enables thread sanitizer (can't be used with address sanitizer)" OFF "NOT ENABLE_ADDRESS_SANITIZER" OFF)
+option(ENABLE_UB_SANITIZER "Enables undefined behaviour sanitizer (also in release, with minimal runtime)")
+
+if(MSVC)
+else()
+    if(ENABLE_ADDRESS_SANITIZER)
+        # Sometimes doesn't work because -lasan is not linked.
+        message(status "Address sanitizer enabled.")
+        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address -O2")
+        set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
+    endif()
+
+    if(ENABLE_THREAD_SANITIZER)
+        message(status "Thread sanitizer enabled.")
+        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=thread")
+        set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=thread")
+    endif()
+
+    if(ENABLE_UB_SANITIZER)
+        # Doesn't work on gcc 7 on Ubuntu 16.04 because there is a bug in gcc.
+        message(status "UB sanitizer enabled.")
+        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=undefined")
+        set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=undefined")
+
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fsanitize=undefined -fsanitize-minimal-runtime")
+        set(CMAKE_LINKER_FLAGS_RELEASE "${CMAKE_LINKER_FLAGS_RELWITHDEBINFO} -fsanitize=undefined -fsanitize-minimal-runtime")
+
+        set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fsanitize=undefined -fsanitize-minimal-runtime")
+        set(CMAKE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_LINKER_FLAGS_RELWITHDEBINFO} -fsanitize=undefined -fsanitize-minimal-runtime")
+    endif()
+endif()
 
 function(SetCompilerOptions targetName)
     # Recommended warnings mostly taken from https://github.com/lefticus/cppbestpractices/blob/master/02-Use_the_Tools_Available.md
