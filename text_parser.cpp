@@ -99,14 +99,18 @@ CodePointInfo getFirstCodePoint(gsl::span<const char> data) {
     bool hasErrors = false;         ///< True if any errors were reported.
     std::stringstream errors; ///< Common errors for all bytes in a sequence.
 
-    auto addError = [&hasErrors, &errors]() -> std::stringstream& { hasErrors = true; errors << '\n'; return errors; };
+    auto addError = [&hasErrors, &errors]() -> std::stringstream& {
+        hasErrors = true;
+        errors << '\n';
+        return errors;
+    };
 
     auto prepareErrorResult = [&hasErrors, &errors, data](int bytesConsumed) -> CodePointInfo {
         ZASSERT(hasErrors) << u8"Cannot prepare error result. No errors were reported.";
         auto errorsStr = errors.str();
         if (!errorsStr.empty())
             errorsStr.erase(0, 1);
-        return { false, { data.data(), bytesConsumed } , errorsStr, 0 };
+        return { false, { data.data(), bytesConsumed }, errorsStr, 0 };
     };
 
     auto firstByte = static_cast<uint8_t>(data[0]);
@@ -202,7 +206,7 @@ CodePointInfo getFirstCodePoint(gsl::span<const char> data) {
             expectedLen = 1;
 
         if (sequenceLen > expectedLen) {
-            addError() << u8"Only shortest representation of a code point is allowed. Expected: " << expectedLen << " got " << sequenceLen << ".";
+            addError() << u8"Only shortest representation of a code point is allowed. Expected " << expectedLen << " got " << sequenceLen << ".";
         } else {
             ZASSERT(sequenceLen == expectedLen);
         }
