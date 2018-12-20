@@ -52,7 +52,7 @@
 /// Returns number of arguments. Works for number of arguments from 0 to 10.
 #if ZVA_OPT_SUPPORTED
 #define ZNUM_ARGUMENTS(...) ZEVAL(ZNUM_ARGUMENTS_IMPL(0 __VA_OPT__(,) __VA_ARGS__))
-#elif defined(_MSC_VER)
+#elif defined(_MSC_VER) && (!defined(_MSVC_TRADITIONAL) || _MSVC_TRADITIONAL)
 
 #define ZNUM_ARGUMENTS(...) ZEVAL(ZTOKEN_CAT(ZNUM_ARGUMENTS_, ZISEMPTY(__VA_ARGS__)) (__VA_ARGS__))
 #define ZNUM_ARGUMENTS_1(...) 0
@@ -82,10 +82,14 @@
 
 #define Z_REVERSE_FIRST_11(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, ...) _11, _10, _9, _8, _7, _6, _5, _4, _3, _2, _1
 
+#define ZEMPTY() // This MACRO doesn't do anything
+#define ZDEFER(macro) macro ZEMPTY ()
+
 /// Macro tool for defining macros overloaded on number of arguments. Works for macros with 0 up to 10 parameters.
 /// @param macro        Name of the macro.
 /// @param maxArgs      Overload macro for 0 up to maxArgs arguments, plus a maxArg+1 or more version.
 /// First use ZOVERLOADMACRO, and then provide versions of the macro for each arity, as in example below.
+/// @note It is ok to define just a subset of arities, for example just arity 2 and 3.
 /// Usage:
 ///   #define LOG(...)                              ZOVERLOADMACRO(LOG, 3, __VA_ARGS__)
 ///   #define LOG_0()                               print("nuffin")
@@ -94,7 +98,9 @@
 ///   #define LOG_3(_1, _2, _3)                     print("three: %d", _3)
 ///   #define LOG_4_OR_MORE(_1, _2, _3, _4, ...)    print("four or more: %d", _4)
 #define ZOVERLOADMACRO(macro, maxArgs, ...)  ZOVERLOADMACRO_IMPL(macro ## _, ZARGUMENT( ZINC( ZNUM_ARGUMENTS(__VA_ARGS__) ) , ZTOKEN_CAT(Z_OVERLOAD_, maxArgs) ), __VA_ARGS__)
-#define ZOVERLOADMACRO_IMPL(macro, numArgs, ...)  ZEVAL( ZTOKEN_CAT(macro, numArgs) (__VA_ARGS__) )
+#define ZOVERLOADMACRO_IMPL(macro, numArgs, ...)  ZEVAL( ZDEFER(ZTOKEN_CAT(macro, numArgs)) (__VA_ARGS__) )
+/// @note ZDEFER(above) is needed in case someone was using an overloaded macro inside an overloaded macro (i.e. ZASSERT uses ZTHROW).
+///       ZDEFER delays expansion of ZOVERLOADMACRO - because otherwise it would not be expanded at all (as recursive macros are not expanded by the preprocessor).
 
 /// Helpers for ZOVERLOADMACRO.
 #define Z_OVERLOAD_0    0, 1_OR_MORE, 1_OR_MORE, 1_OR_MORE, 1_OR_MORE, 1_OR_MORE, 1_OR_MORE, 1_OR_MORE, 1_OR_MORE, 1_OR_MORE, 1_OR_MORE
