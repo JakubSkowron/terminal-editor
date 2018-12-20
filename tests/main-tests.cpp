@@ -1,4 +1,5 @@
-#define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
+//#define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
+#define CATCH_CONFIG_RUNNER // We will provide our own main().
 #include "catch2/catch.hpp"
 
 #include "text_buffer.h"
@@ -7,8 +8,14 @@
 #include "file_utilities.h"
 
 #include <sstream>
+#include <clocale>
 
 #include <gsl/span>
+
+int main (int argc, char * argv[]) {
+    std::setlocale(LC_ALL, "en_US.UTF8");       // @note This is a hack to make sure wcwidth() understands unicode characters.
+    return Catch::Session().run( argc, argv );
+}
 
 using namespace terminal_editor;
 
