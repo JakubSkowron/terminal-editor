@@ -1,7 +1,7 @@
 # terminal-editor
 
-[![Travis CI Status](https://travis-ci.org/Zbyl/terminal-editor.svg?branch=master)](https://travis-ci.org/Zbyl/terminal-editor)
-[![AppVeyor status](https://ci.appveyor.com/api/projects/status/fgwm63140mvt9jsk/branch/master?svg=true)](https://ci.appveyor.com/project/Zbyl/terminal-editor/branch/master)
+[![Travis CI Status](https://travis-ci.org/JakubSkowron/terminal-editor.svg?branch=master)](https://travis-ci.org/JakubSkowron/terminal-editor)
+[![AppVeyor status](https://ci.appveyor.com/api/projects/status/86ikpll4wy6t5les/branch/master?svg=true)](https://ci.appveyor.com/project/JakubSkowron/terminal-editor/branch/master)
 
 # Requirements
 
