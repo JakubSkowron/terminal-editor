@@ -1,0 +1,25 @@
+version: '{build}'
+
+configuration:
+  - Debug
+
+os: Visual Studio 2017
+
+environment:
+  matrix:
+    - GENERATOR: "Visual Studio 15 2017 Win64"
+  
+matrix:
+  fast_finish: true
+
+install:
+  - cinst cmake
+
+before_build:
+  - .\ci-builds\prepare-build.bat
+
+build:
+  project: .\build-zz\TerminalEditor.sln
+
+test_script:
+  - .\ci-builds\test.bat

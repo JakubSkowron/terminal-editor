@@ -158,23 +158,26 @@ target_include_directories(${LIB_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/third_party/m
 target_include_directories(${LIB_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/third_party/nlohmann-json-3.4.0")
 SetCompilerOptions(${LIB_NAME})
 
-# text_ui library
+if(WIN32)
+else()
+    # text_ui library
 
-add_subdirectory(text_ui)
+    add_subdirectory(text_ui)
 
-# terminal-editor target
+    # terminal-editor target
 
-set(APP_NAME terminal-editor)
+    set(APP_NAME terminal-editor)
 
-set(APP_SOURCES
-    main.cpp
+    set(APP_SOURCES
+        main.cpp
 
-    README.md
-    )
+        README.md
+        )
 
-add_executable(${APP_NAME} ${APP_SOURCES})
-target_link_libraries(${APP_NAME} PRIVATE ${LIB_NAME} text_ui)
-SetCompilerOptions(${APP_NAME})
+    add_executable(${APP_NAME} ${APP_SOURCES})
+    target_link_libraries(${APP_NAME} PRIVATE ${LIB_NAME} text_ui)
+    SetCompilerOptions(${APP_NAME})
+endif()
 
 # Tests
 
