@@ -1,0 +1,43 @@
+#https://docs.travis-ci.com/user/customizing-the-build/
+#compilers in Travis: https://jonasw.de/blog/2015/07/22/develop/cplusplus14-on-travis-with-cmake/
+#also: http://genbattle.bitbucket.org/blog/2016/01/17/c++-travis-ci/
+#Coverity: https://scan.coverity.com/travis_ci
+# script: 
+
+language: cpp
+sudo: false
+
+matrix:
+  include:
+    - compiler: gcc
+      env:
+        - COMPILER=g++
+  include:
+    - compiler: clang
+      env:
+        - COMPILER=clang++
+
+#matrix:
+#  include:
+#    - compiler: gcc
+#      addons:
+#        apt:
+#          sources:
+#            - ubuntu-toolchain-r-test
+#          packages:
+#            - g++-7.3
+#      env:
+#        - COMPILER=g++-7.3
+#    - compiler: clang
+#      addons:
+#        apt:
+#          sources:
+#            - ubuntu-toolchain-r-test
+#            - llvm-toolchain-bionic-6.0
+#          packages:
+#            - clang-6.0
+#      env:
+#        - COMPILER=clang++-6.0
+
+script:
+  - ./ci-builds/build.sh
