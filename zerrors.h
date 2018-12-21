@@ -78,7 +78,7 @@ public:
 
 #if ZVA_OPT_SUPPORTED
         
-#define ZTHROW(...) (terminal_editor::make_throw_helper(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: " __VA_OPT__(,) __VA_ARGS__).message)
+#define ZTHROW(...) (terminal_editor::make_throw_helper(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: " __VA_OPT__(,) __VA_ARGS__).message << "")
 
 #define ZASSERT(arg0, ...) \
     if ((arg0) __VA_OPT__(,) __VA_ARGS__) {             \
@@ -87,7 +87,7 @@ public:
 
 #elif defined(_MSC_VER)
         
-#define ZTHROW(...) (terminal_editor::make_throw_helper(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: ", __VA_ARGS__).message)
+#define ZTHROW(...) (terminal_editor::make_throw_helper(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: ", __VA_ARGS__).message << "")
 
 #define ZASSERT(arg0, ...) \
     if ((arg0), __VA_ARGS__) {             \
@@ -96,7 +96,7 @@ public:
 
 #else
         
-#define ZTHROW(...) (terminal_editor::make_throw_helper(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: ", ## __VA_ARGS__).message)
+#define ZTHROW(...) (terminal_editor::make_throw_helper(__FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): Exception: ", ## __VA_ARGS__).message << "")
 
 #define ZASSERT(arg0, ...) \
     if ((arg0), ## __VA_ARGS__) {             \

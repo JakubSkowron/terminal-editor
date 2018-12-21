@@ -38,6 +38,13 @@ else()
     endif()
 endif()
 
+if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+    set(USING_CLANG ON)
+    message(status "Compiling using Clang.")
+else()
+    set(USING_CLANG OFF)
+endif()
+
 function(SetCompilerOptions targetName)
     # Recommended warnings mostly taken from https://github.com/lefticus/cppbestpractices/blob/master/02-Use_the_Tools_Available.md
     if(MSVC)
@@ -79,18 +86,25 @@ function(SetCompilerOptions targetName)
             -Woverloaded-virtual        # warn if you overload (not override) a virtual function
             #-Wpedantic                  # warn if non-standard C++ is used
             -Wconversion                # warn on type conversions that may lose data
-            #-Wsign-conversion           # warn on sign conversions
             #-Wmisleading-indentation    # (not supported on old gcc) warn if indentation implies blocks where blocks do not exist
             #-Wduplicated-cond           # (not supported on old gcc) warn if if / else chain has duplicated conditions
             #-Wduplicated-branches       # (not supported on old gcc) warn if if / else branches have duplicated code
-            -Wlogical-op                # warn about logical operations being used where bitwise were probably wanted
             #-Wnull-dereference          # (not supported on old gcc) warn if a null dereference is detected
-            -Wuseless-cast              # warn if you perform a cast to the same type
             -Wdouble-promotion          # warn if float is implicit promoted to double
             -Wformat=2                  # warn on security issues around functions that format output (ie printf)
-            #-Wlifetime                  # (clang only currently) shows object lifetime issues
             #-Wno-variadic-macros		# Don't complain about non-standard use of macros.
         )
+        if (USING_CLANG)
+            list(APPEND optionsList
+                #-Wlifetime                  # (clang only) shows object lifetime issues
+                -Wno-sign-conversion        # don't warn on sign conversions (this is very noisy)
+            )
+        else()
+            list(APPEND optionsList
+                -Wlogical-op                # (gcc only) warn about logical operations being used where bitwise were probably wanted
+                -Wuseless-cast              # (gcc only) warn if you perform a cast to the same type
+            )
+        endif()
     endif()
     target_compile_options(${targetName} PRIVATE ${optionsList})
 
