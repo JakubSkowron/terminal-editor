@@ -4,7 +4,8 @@ pushd %cd%
 
 echo "Testing..."
 
-.\build-zz\Debug\tests\editor-tests
+cd .\tests
+..\build-zz\tests\Debug\editor-tests.exe
 if %errorlevel% neq 0 exit /b 1
 
 echo "Testing done."

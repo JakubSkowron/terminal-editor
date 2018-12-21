@@ -6,7 +6,8 @@ set -e
 pushd `pwd`
 
 echo "Testing..."
-./build-zz/tests/editor-tests
+cd ./tests
+../build-zz/tests/editor-tests
 echo "Testing done."
 
 popd

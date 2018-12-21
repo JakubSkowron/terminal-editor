@@ -10,7 +10,7 @@ pushd %cd%
 mkdir build-zz
 cd build-zz
 
-cmake -G "%GENERATOR%" ..
+"C:\Program Files\CMake\bin\cmake.exe" -G "%GENERATOR%" ..
 if %errorlevel% neq 0 exit /b 1
 
 popd
