@@ -24,8 +24,5 @@ matrix:
       env:
         - COMPILER=clang++
 
-before_install:
-  - chmod +x ./ci-builds/build.sh
-
 script:
   - ./ci-builds/build.sh
