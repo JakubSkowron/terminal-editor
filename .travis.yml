@@ -16,19 +16,16 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
           packages:
-            - g++-7.3
+            - g++-7
       env:
-        - COMPILER=g++-7.3
+        - COMPILER=g++-7
     - compiler: clang
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-6.0
-          packages:
-            - clang-6.0
+
       env:
-        - COMPILER=clang++-6.0
+        - COMPILER=clang++
+
+before_install:
+  - chmod +x ./ci-builds/build.sh
 
 script:
   - ./ci-builds/build.sh
