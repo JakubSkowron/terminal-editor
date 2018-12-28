@@ -176,7 +176,7 @@ int main() {
       terminal::Event e = event_queue.poll();
       switch (e.common.type) {
         case terminal::Event::Type::KeyPressed: {
-          if (e.keypressed.ctrl == true && (e.keypressed.key | 0x40) == 'Q') {
+          if (e.keypressed.ctrl == true && terminal::ctrl_to_key(e.keypressed.key) == 'Q') {
             redraw();
             message_box("Good bye");
             std::this_thread::sleep_for(1s);
@@ -187,7 +187,7 @@ int main() {
           // Ctrl
           if (e.keypressed.ctrl) {
             key = "Ctrl-";
-            key += static_cast<char>(e.keypressed.key | 0x40);
+            key += static_cast<char>(terminal::ctrl_to_key(e.keypressed.key));
           } else {
             key += static_cast<char>(e.keypressed.key);
           }

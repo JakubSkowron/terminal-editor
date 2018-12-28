@@ -61,6 +61,8 @@ MouseTracking::~MouseTracking() {
   }
 }
 
+unsigned char ctrl_to_key(unsigned char code) { return code | 0x40; }
+
 void EventQueue::push(Event e) {
   {
     std::unique_lock<std::mutex> lock{mutex};

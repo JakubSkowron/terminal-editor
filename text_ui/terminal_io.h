@@ -70,6 +70,10 @@ union Event {
   } window_size;
 };
 
+// Returns code | 0x40, i.e. 1 -> 'A'
+// Useful to compare code with a Ctrl-Key
+unsigned char ctrl_to_key(unsigned char code);
+
 class EventQueue {
  public:
   void push(Event e);
