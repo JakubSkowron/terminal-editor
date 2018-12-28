@@ -49,13 +49,14 @@ union Event {
   } common;
 
   struct KeyPressed {
-    Type type;          // = Type::KeyPressed;
-    unsigned char key;  // TODO: should be more than one char (UTF-8 sequence)
+    Type type;      // = Type::KeyPressed;
+    char keys[20];  // null terminated UTF-8 sequence TODO: make it not fixed 20
     bool ctrl;
   } keypressed;
 
   struct Esc {
-    Type type;  // = Type::Esc;
+    Type type;       // = Type::Esc;
+    char bytes[20];  // null terminated escape sequence TODO: make it not fixed 20
   } esc;
 
   struct Error {
@@ -72,7 +73,7 @@ union Event {
 
 // Returns code | 0x40, i.e. 1 -> 'A'
 // Useful to compare code with a Ctrl-Key
-unsigned char ctrl_to_key(unsigned char code);
+char ctrl_to_key(unsigned char code);
 
 class EventQueue {
  public:

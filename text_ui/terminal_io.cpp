@@ -4,8 +4,12 @@
 #include "terminal_io.h"
 
 #include <termios.h>  // for tcsetattr
+#include <algorithm>
 #include <cstdio>
+#include <cstring>
 #include <system_error>
+
+#include <unistd.h>
 
 namespace terminal {
 
@@ -61,7 +65,7 @@ MouseTracking::~MouseTracking() {
   }
 }
 
-unsigned char ctrl_to_key(unsigned char code) { return code | 0x40; }
+char ctrl_to_key(unsigned char code) { return code | 0x40; }
 
 void EventQueue::push(Event e) {
   {
@@ -84,24 +88,28 @@ Event EventQueue::poll() {
 // TODO: consider non-blocking IO (or poll/select) and a joinable thread
 void InputThread::loop() {
   while (true) {
-    int c = std::getchar();
-    if (break_loop) break;
-    if (c == EOF) break;
+    // TODO: make it not fixed width
+    char buf[20];
+    auto count = ::read(::fileno(stdin), buf, 19);
+    if (break_loop) return;
+    if (count == 0) continue;
+    if (count == -1) break;  // Error
+    buf[count++] = '\0';
 
-    unsigned char key = static_cast<unsigned char>(c);
-
-    // TODO: read whole escape sequence
-    if (key == 0x1b) {
+    if (buf[0] == 0x1b) {
       Event e;
-      e.esc = {Event::Type::Esc};
+      e.esc = Event::Esc{};
+      e.esc.type = Event::Type::Esc;
+      std::copy(buf + 1, buf + count, e.esc.bytes);
       event_queue.push(e);
       continue;
     }
 
     // consider it as ordinary keypressed
     Event e;
-    e.keypressed = {Event::Type::KeyPressed, key, false};
-    if ((key & 0xE0) == 0) {
+    e.keypressed = Event::KeyPressed{};
+    std::copy(buf, buf + count, e.keypressed.keys);
+    if (std::strlen(buf) == 1 && (buf[0] & 0xE0) == 0) {
       // Ctrl key strips high 3 bits from character on input
       // Use key | 0x40 to get 'A' from 1
       e.keypressed.ctrl = true;

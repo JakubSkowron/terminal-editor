@@ -176,7 +176,7 @@ int main() {
       terminal::Event e = event_queue.poll();
       switch (e.common.type) {
         case terminal::Event::Type::KeyPressed: {
-          if (e.keypressed.ctrl == true && terminal::ctrl_to_key(e.keypressed.key) == 'Q') {
+          if (e.keypressed.ctrl == true && terminal::ctrl_to_key(e.keypressed.keys[0]) == 'Q') {
             redraw();
             message_box("Good bye");
             std::this_thread::sleep_for(1s);
@@ -187,12 +187,13 @@ int main() {
           // Ctrl
           if (e.keypressed.ctrl) {
             key = "Ctrl-";
-            key += static_cast<char>(terminal::ctrl_to_key(e.keypressed.key));
+            key += terminal::ctrl_to_key(e.keypressed.keys[0]);
           } else {
-            key += static_cast<char>(e.keypressed.key);
+            key = e.keypressed.keys;
           }
 
-          message = key + " (" + std::to_string(e.keypressed.key) + ").";
+          message = key;
+          if (key.size() == 1) message += " (" + std::to_string(e.keypressed.keys[0]) + ")";
           push_line(message);
           redraw();
           message_box(message + " Press Ctrl-Q to exit.");
@@ -202,10 +203,18 @@ int main() {
           redraw();
           message_box(message);
           break;
-        case terminal::Event::Type::Esc:
-          push_line("Esc (Ctrl-[)");
+        case terminal::Event::Type::Esc: {
+          std::string message = "Esc ";
+          for (char* p = e.esc.bytes; *p != 0; ++p) {
+            if (*p < 32)
+              message += "\\" + std::to_string(*p);
+            else
+              message += *p;
+          }
+          push_line(message);
           redraw();
           break;
+        }
         default:  // TODO: handle other events
           redraw();
           message_box("Default");
