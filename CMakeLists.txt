@@ -175,7 +175,8 @@ else()
         )
 
     add_executable(${APP_NAME} ${APP_SOURCES})
-    target_link_libraries(${APP_NAME} PRIVATE ${LIB_NAME} text_ui)
+    find_package(Threads)
+    target_link_libraries(${APP_NAME} PRIVATE ${LIB_NAME} text_ui ${CMAKE_THREAD_LIBS_INIT})
     SetCompilerOptions(${APP_NAME})
 endif()
 

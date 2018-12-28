@@ -4,6 +4,7 @@
 #include "terminal_io.h"
 
 #include <termios.h>  // for tcsetattr
+#include <cstdio>
 #include <system_error>
 
 namespace terminal {
@@ -38,7 +39,91 @@ TerminalRawMode::~TerminalRawMode() {
   if (::tcsetattr(stdin_fd, TCSAFLUSH, &tios_backup) == -1) std::perror(__func__);
 }
 
-// Ctrl key strips high 3 bits from character on input
-char ctrl_char(const char c) { return c & 0x1f; }
+static void fputs_ex(const char* s, std::FILE* stream, const char* err_msg) {
+  int ret = std::fputs(s, stream);  // DEC Private Mode Set (DECSET)
+  if (ret == EOF) throw std::system_error(errno, std::generic_category(), err_msg);
+}
+
+MouseTracking::MouseTracking() {
+  // Enable SGR Mouse Mode
+  // Use Cell Motion Mouse Tracking
+  fputs_ex("\x1B[?1006h\x1B[?1002h", stdout, __func__);
+}
+
+MouseTracking::~MouseTracking() {
+  try {
+    // Don't use Cell Motion Mouse Tracking
+    // Disable SGR Mouse Mode
+    fputs_ex("\x1B[?1002l\x1B[?1006l", stdout, __func__);
+  } catch (std::exception& e) {
+    std::fputs(e.what(), stderr);
+    std::fputs("\n", stderr);
+  }
+}
+
+void EventQueue::push(Event e) {
+  {
+    std::unique_lock<std::mutex> lock{mutex};
+    queue.push(std::move(e));
+  }
+  cv.notify_one();
+}
+
+Event EventQueue::poll() {
+  std::unique_lock<std::mutex> lock{mutex};
+  while (queue.empty()) {
+    cv.wait(lock);
+  }
+  Event e = queue.front();
+  queue.pop();
+  return e;
+}
+
+// TODO: consider non-blocking IO (or poll/select) and a joinable thread
+void InputThread::loop() {
+  while (true) {
+    int c = std::getchar();
+    if (break_loop) break;
+    if (c == EOF) break;
+
+    unsigned char key = static_cast<unsigned char>(c);
+
+    // TODO: read whole escape sequence
+    if (key == 0x1b) {
+      Event e;
+      e.esc = {Event::Type::Esc};
+      event_queue.push(e);
+      continue;
+    }
+
+    // consider it as ordinary keypressed
+    Event e;
+    e.keypressed = {Event::Type::KeyPressed, key, false};
+    if ((key & 0xE0) == 0) {
+      // Ctrl key strips high 3 bits from character on input
+      // Use key | 0x40 to get 'A' from 1
+      e.keypressed.ctrl = true;
+    }
+    event_queue.push(e);
+  }
+
+  // Error
+  Event e;
+  e.error = {Event::Type::Error, nullptr};
+  if (std::feof(stdin)) {
+    e.error.msg = "stdin EOF";
+  }
+  if (std::ferror(stdin)) {
+    e.error.msg = "stdin ERROR";
+  }
+  event_queue.push(e);
+}
+
+InputThread::InputThread(EventQueue& event_queue)
+    : event_queue(event_queue), thread(&InputThread::loop, this) {
+  thread.detach();
+}
+
+InputThread::~InputThread() { break_loop = true; }
 
 }  // namespace terminal

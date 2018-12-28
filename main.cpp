@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cstdio>
 #include <cstring>
+#include <deque>
 #include <string>
 #include <thread>
 
@@ -129,8 +130,26 @@ int main() {
     terminal::TerminalRawMode raw_terminal_scope;
     terminal::FullscreenOn fullscreen_scope;
     terminal::HideCursor hide_cursor_scope;
+    terminal::MouseTracking mouse_tracking;
+    terminal::EventQueue event_queue;
+    terminal::InputThread input_thread{event_queue};
+    OnScreenResize listener{[&](int w, int h) {
+      terminal::Event e;
+      e.window_size = {terminal::Event::Type::WindowSize, w, h};
+      // TODO: avoid locking mutex in signal handler.
+      // Use flag & condition variable notify.
+      event_queue.push(e);
+    }};
 
-    auto redraw = []() {
+    std::deque<std::string> line_buffer;
+    auto push_line = [&line_buffer](std::string line) {
+      line_buffer.push_back(line);
+      while (static_cast<int>(line_buffer.size()) > terminal_size::height - 3) {
+        line_buffer.pop_front();
+      }
+    };
+
+    auto redraw = [&line_buffer]() {
       // set foreground black, background white
       std::fputs("\x1B[30;47m", stdout);
       // clear screen, move cursor to top-left corner
@@ -140,8 +159,11 @@ int main() {
       vertical_lines();
       terminal::cursor_goto(2, 2);
       std::printf("Screen size %dx%d\n", terminal_size::width, terminal_size::height);
-      terminal::cursor_goto(2, 3);
-      std::puts("Press any key...");
+      int line_number = 3;
+      for (auto& line : line_buffer) {
+        terminal::cursor_goto(2, line_number++);
+        std::puts(line.c_str());
+      }
     };
 
     terminal_size::update();
@@ -149,35 +171,45 @@ int main() {
 
     std::string message = "Press Ctrl-Q to exit...";
 
-    OnScreenResize listner{[&](int, int) {
-      redraw();
-      message_box(message);
-    }};
-
     while (true) {
-      // wait for any key
-      int c = std::getchar();
-      if (c == terminal::ctrl_char('q')) {
-        redraw();
-        message_box("Good bye");
-        std::this_thread::sleep_for(1s);
-        return 0;
-      }
+      // wait for input event
+      terminal::Event e = event_queue.poll();
+      switch (e.common.type) {
+        case terminal::Event::Type::KeyPressed: {
+          if (e.keypressed.ctrl == true && (e.keypressed.key | 0x40) == 'Q') {
+            redraw();
+            message_box("Good bye");
+            std::this_thread::sleep_for(1s);
+            return 0;
+          }
 
-      std::string key;
-      // Ctrl
-      if (c < 32) {
-        int ctrl = c - 1 + static_cast<int>('A');
-        key = "Ctrl-" + std::string(1, static_cast<char>(ctrl));
-      } else {
-        key = std::string(1, char(c));
-      }
+          std::string key;
+          // Ctrl
+          if (e.keypressed.ctrl) {
+            key = "Ctrl-";
+            key += static_cast<char>(e.keypressed.key | 0x40);
+          } else {
+            key += static_cast<char>(e.keypressed.key);
+          }
 
-      message = "Pressed " + key + " (" + std::to_string(c) + "). ";
-      message += "Press Ctrl-Q to exit.";
-      redraw();
-      message_box(message);
-      std::this_thread::sleep_for(0.1s);
+          message = key + " (" + std::to_string(e.keypressed.key) + ").";
+          push_line(message);
+          redraw();
+          message_box(message + " Press Ctrl-Q to exit.");
+          break;
+        }
+        case terminal::Event::Type::WindowSize:
+          redraw();
+          message_box(message);
+          break;
+        case terminal::Event::Type::Esc:
+          push_line("Esc (Ctrl-[)");
+          redraw();
+          break;
+        default:  // TODO: handle other events
+          redraw();
+          message_box("Default");
+      }
     }
 
   } catch (std::exception& e) {

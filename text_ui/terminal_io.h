@@ -5,6 +5,10 @@
 #define TERMINAL_IO_H
 
 #include <termios.h>
+#include <condition_variable>
+#include <mutex>
+#include <queue>
+#include <thread>
 
 namespace terminal {
 
@@ -29,9 +33,69 @@ class TerminalRawMode {
   ::termios tios_backup;
 };
 
-// Ctrl key strips high 3 bits from character on input
-// This function returns c & 0x1f
-char ctrl_char(const char c);
+/* Turn on mouse tracking */
+class MouseTracking {
+ public:
+  MouseTracking();
+  ~MouseTracking();
+};
+
+union Event {
+  enum class Type { KeyPressed, Esc, Error, WindowSize };
+
+  // common initial sequence for union
+  struct {
+    Type type;
+  } common;
+
+  struct KeyPressed {
+    Type type;          // = Type::KeyPressed;
+    unsigned char key;  // TODO: should be more than one char (UTF-8 sequence)
+    bool ctrl;
+  } keypressed;
+
+  struct Esc {
+    Type type;  // = Type::Esc;
+  } esc;
+
+  struct Error {
+    Type type;        // = Type::Error;
+    const char* msg;  // TODO: is it possible to use std::string in union?
+  } error;
+
+  struct WindowSize {
+    Type type;  // = Type::WindowSize;
+    int width;
+    int height;
+  } window_size;
+};
+
+class EventQueue {
+ public:
+  void push(Event e);
+  // locking function
+  Event poll();
+
+ private:
+  std::queue<Event> queue;
+  std::condition_variable cv;
+  std::mutex mutex;
+};
+
+// Pushes input events to EventQueue
+class InputThread {
+ public:
+  // TODO: should InputThread get ownership of queue? Probably no.
+  InputThread(EventQueue& event_queue);
+  ~InputThread();
+
+ private:
+  EventQueue& event_queue;  // should be declared before thread
+  std::thread thread;
+
+  void loop();
+  bool break_loop = false;
+};
 
 }  // namespace terminal
 
