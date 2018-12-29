@@ -144,7 +144,7 @@ int main() {
     std::deque<std::string> line_buffer;
     auto push_line = [&line_buffer](std::string line) {
       line_buffer.push_back(line);
-      while (static_cast<int>(line_buffer.size()) > terminal_size::height - 3) {
+      while (line_buffer.size() > 0 && static_cast<int>(line_buffer.size()) > terminal_size::height - 3) {
         line_buffer.pop_front();
       }
     };
