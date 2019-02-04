@@ -280,7 +280,7 @@ void InputThread::loop() {
         Event e;
         e.esc = Event::Esc{};
         e.esc.type = Event::Type::Esc;
-        std::copy(txt.c_str(), txt.c_str() + txt.size(), e.esc.bytes);
+        std::copy(txt.c_str(), txt.c_str() + txt.size() + 1, e.esc.bytes);
         event_queue.push(e);
         continue;
     }
@@ -296,7 +296,7 @@ void InputThread::loop() {
     Event e;
     e.keypressed = Event::KeyPressed{};
     e.keypressed.ctrl = ctrl;
-    std::copy(txt.c_str(), txt.c_str() + txt.size(), e.keypressed.keys);
+    std::copy(txt.c_str(), txt.c_str() + txt.size() + 1, e.keypressed.keys);
     event_queue.push(e);
   }
 
