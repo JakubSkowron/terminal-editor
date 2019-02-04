@@ -1,14 +1,15 @@
 // Distributed under MIT License, see LICENSE file
 // (c) 2018 Jakub Skowron, jskowron183@gmail.com
 
+#include "text_ui.h"
+#include "editor_config.h"
+
 #include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <deque>
 #include <string>
 #include <thread>
-
-#include "text_ui/text_ui.h"
 
 /* Using ANSI and xterm escape codes. It works in PuTTy, gnome-terminal,
    and other xterm-like terminals. Some codes will also work on real tty.
@@ -52,40 +53,47 @@ void message_box(std::string message) {
   std::fputs("\x1B[30;47m", stdout);
 }
 
+// This is a super ugly hack. I have no idea why this is necessary,
+#ifdef WIN32
+#define _u8(x) x
+#else
+#define _u8(x) u8 ## x
+#endif
+
 void draw_box() {
   // top line
   terminal::cursor_goto(1, 1);
-  std::fputs(u8"┌", stdout);
+  std::fputs(_u8("┌"), stdout);
   for (int x = 2; x < terminal_size::width; x += 1) {
     if (x % 10 == 1) {
-      std::fputs(u8"┬", stdout);
+      std::fputs(_u8("┬"), stdout);
       continue;
     }
 
-    std::fputs(u8"─", stdout);
+    std::fputs(_u8("─"), stdout);
   }
-  std::fputs(u8"┐", stdout);
+  std::fputs(_u8("┐"), stdout);
 
   // two vertical lines at 1, and at width
   for (int y = 2; y < terminal_size::height; y += 1) {
     terminal::cursor_goto(1, y);
-    std::fputs(y % 5 == 1 ? u8"├" : u8"│", stdout);
+    std::fputs(y % 5 == 1 ? _u8("├") : _u8("│"), stdout);
     terminal::cursor_goto(terminal_size::width, y);
-    std::fputs(y % 5 == 1 ? u8"┤" : u8"│", stdout);
+    std::fputs(y % 5 == 1 ? _u8("┤") : _u8("│"), stdout);
   }
 
   // bottom line
   terminal::cursor_goto(1, terminal_size::height);
-  std::fputs(u8"└", stdout);
+  std::fputs(_u8("└"), stdout);
   for (int x = 2; x < terminal_size::width; x += 1) {
     if (x % 10 == 1) {
-      std::fputs(u8"┴", stdout);
+      std::fputs(_u8("┴"), stdout);
       continue;
     }
 
-    std::fputs(u8"─", stdout);
+    std::fputs(_u8("─"), stdout);
   }
-  std::fputs(u8"┘", stdout);
+  std::fputs(_u8("┘"), stdout);
 }
 
 void horizontal_lines() {
@@ -93,11 +101,11 @@ void horizontal_lines() {
     terminal::cursor_goto(2, y);
     for (int x = 2; x < terminal_size::width; x += 1) {
       if (x % 10 == 1) {
-        std::fputs(u8"┼", stdout);
+        std::fputs(_u8("┼"), stdout);
         continue;
       }
 
-      std::fputs(u8"─", stdout);
+      std::fputs(_u8("─"), stdout);
     }
   }
 }
@@ -109,7 +117,7 @@ void vertical_lines() {
     }
     for (int x = 11; x < terminal_size::width; x += 10) {
       terminal::cursor_goto(x, y);
-      std::fputs(u8"│", stdout);
+      std::fputs(_u8("│"), stdout);
     }
   }
 }
@@ -118,17 +126,22 @@ void vertical_lines() {
 //      (currently is directly called in signal handler)
 class OnScreenResize {
  public:
+  /// Sets up handler for window resize event.
+  /// Also fires the event immediately.
   OnScreenResize(std::function<void(int width, int height)> listner) {
-    terminal_size::start_listening(listner);
+    terminal_size::initialize(listner);
+    terminal_size::fire_screen_resize_event();
   }
-  ~OnScreenResize() { terminal_size::stop_listening(); }
+  ~OnScreenResize() {
+    terminal_size::shutdown();
+  }
 };
 
 int main() {
   using namespace std::chrono_literals;
   try {
     terminal::TerminalRawMode raw_terminal_scope;
-    terminal::FullscreenOn fullscreen_scope;
+    terminal::FullscreenOn fullscreen_scope;    // @todo For some reason this caused weird problems on Windows: the program cannot be rerun - restart of Visual Studio is required.
     terminal::HideCursor hide_cursor_scope;
     terminal::MouseTracking mouse_tracking;
     terminal::EventQueue event_queue;
@@ -166,14 +179,24 @@ int main() {
       }
     };
 
-    terminal_size::update();
-    redraw();
-
     std::string message = "Press Ctrl-Q to exit...";
 
     while (true) {
       // wait for input event
       terminal::Event e = event_queue.poll();
+
+      auto action = terminal::getActionForEvent("global", e, terminal_editor::getEditorConfig());
+      if (action) {
+          redraw();
+          message_box(*action);
+
+          if (*action == "quit") {
+              std::this_thread::sleep_for(1s);
+              return 0;
+          }
+          continue;
+      }
+
       switch (e.common.type) {
         case terminal::Event::Type::KeyPressed: {
           if (e.keypressed.ctrl == true && terminal::ctrl_to_key(e.keypressed.keys[0]) == 'Q') {

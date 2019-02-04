@@ -1,0 +1,27 @@
+{
+	"tabWidh": 3,
+	"keyMaps": {
+		"global": {
+			"name": "global",
+			"bindings": [
+				{
+					"key": "a",
+					"action": "Action!"
+				},
+				{
+					"key": "a",
+					"ctrl": true,
+					"action": "Ctrl+Action!"
+				},
+				{
+					"key": "A",
+					"action": "Big Action!"
+				},
+				{
+					"key": "q",
+					"action": "quit"
+				}
+			]
+		}
+	}
+}

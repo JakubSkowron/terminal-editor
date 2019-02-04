@@ -11,15 +11,15 @@ namespace terminal_size {
 extern int width;
 extern int height;
 
-// update values width, height
-void update();
+/// Initializes width and height and registers window resize handler.
+void initialize(std::function<void(int width, int height)> listener = [](int, int) {});
 
-/* Updates values width, height and registers window size changed (SIGWINCH) handler.
-   Optionaly pass listener, which will be called in signal handler */
-void start_listening(std::function<void(int width, int height)> listener = [](int, int) {});
+/// Unregisters window resize handler.
+void shutdown();
 
-// unregister SIGWINCH handler
-void stop_listening();
+/// Fires window resize handler with current windows size.
+void fire_screen_resize_event();
+
 }  // namespace terminal_size
 
 #endif  // TERMINAL_SIZE_H
