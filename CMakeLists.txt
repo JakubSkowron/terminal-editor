@@ -114,6 +114,12 @@ function(SetCompilerOptions targetName)
     if(MSVC)
         # Get rid of annoying compiler warnings.
         target_compile_definitions(${targetName} PUBLIC _CRT_SECURE_NO_WARNINGS)
+    
+        # Get rid of some horrible crap in windows.h
+        target_compile_definitions(${targetName} PUBLIC NOMINMAX NOGDI WIN32_LEAN_AND_MEAN VC_EXTRALEAN)
+    
+        # Build with unicode support
+        target_compile_definitions(${targetName} PUBLIC UNICODE _UNICODE)
     endif()
 endfunction()
 
@@ -155,29 +161,32 @@ add_library(${LIB_NAME} ${LIB_SOURCES})
 target_include_directories(${LIB_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_include_directories(${LIB_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/third_party/gsl-2.0.0")
 target_include_directories(${LIB_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/third_party/mk_wcswidth")
+target_include_directories(${LIB_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/third_party/tl")
 target_include_directories(${LIB_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/third_party/nlohmann-json-3.4.0")
 SetCompilerOptions(${LIB_NAME})
 
+# text_ui library
+
+add_subdirectory(text_ui)
+
+# terminal-editor target
+
+set(APP_NAME terminal-editor)
+
+set(APP_SOURCES
+    main.cpp
+
+    README.md
+    )
+
+add_executable(${APP_NAME} ${APP_SOURCES})
+find_package(Threads)
+target_link_libraries(${APP_NAME} PRIVATE ${LIB_NAME} text_ui ${CMAKE_THREAD_LIBS_INIT})
+SetCompilerOptions(${APP_NAME})
+
 if(WIN32)
-else()
-    # text_ui library
-
-    add_subdirectory(text_ui)
-
-    # terminal-editor target
-
-    set(APP_NAME terminal-editor)
-
-    set(APP_SOURCES
-        main.cpp
-
-        README.md
-        )
-
-    add_executable(${APP_NAME} ${APP_SOURCES})
-    find_package(Threads)
-    target_link_libraries(${APP_NAME} PRIVATE ${LIB_NAME} text_ui ${CMAKE_THREAD_LIBS_INIT})
-    SetCompilerOptions(${APP_NAME})
+    #set_target_properties(${APP_NAME} PROPERTIES VS_DEBUGGER_COMMAND_ARGUMENTS "ala")
+    set_target_properties(${APP_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endif()
 
 # Tests
