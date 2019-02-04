@@ -105,10 +105,16 @@ std::once_flag editorConfigLoadFlag;
 
 const EditorConfig& getEditorConfig() {
     static EditorConfig editorConfig;
+    static bool loaded = false;
 
     const char* configFileName = "editor-config.json";
     try {
-        std::call_once(editorConfigLoadFlag, [configFileName]() { editorConfig = loadEditorConfig(configFileName); });
+        // @todo Doesn't work on WSL, for some reason...
+        ///std::call_once(editorConfigLoadFlag, [configFileName]() { editorConfig = loadEditorConfig(configFileName); });
+        if (!loaded) {
+            loaded = true;
+            editorConfig = loadEditorConfig(configFileName);
+        }
     }
     catch (const FileNotFoundException&) {
         LOG() << "'" << configFileName << "' not found. Using default editor config.";
