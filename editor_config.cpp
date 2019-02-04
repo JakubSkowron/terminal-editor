@@ -1,5 +1,6 @@
 #include "editor_config.h"
 
+#include "zerrors.h"
 #include "zlogging.h"
 #include "file_utilities.h"
 
@@ -9,14 +10,94 @@
 
 namespace terminal_editor {
 
+std::string to_string(KeyMap::MouseButton mouseButton) {
+    switch (mouseButton) {
+        case KeyMap::MouseButton::Left: return "Left";
+        case KeyMap::MouseButton::Right: return "Right";
+        case KeyMap::MouseButton::Middle: return "Middle";
+    }
+    ZIMPOSSIBLE();
+}
+
+template<typename T>
+KeyMap::MouseButton from_string(const std::string& mouseButton) {
+    if (mouseButton == "Left") return KeyMap::MouseButton::Left;
+    if (mouseButton == "Right") return KeyMap::MouseButton::Right;
+    if (mouseButton == "Middle") return KeyMap::MouseButton::Middle;
+    ZTHROW() << "Invalid mouse button name: " << mouseButton;
+}
+
+template
+KeyMap::MouseButton from_string<KeyMap::MouseButton>(const std::string& mouseButton);
+
+/// Returns true if given json object has given key.
+/// Value under the key does not matter (it can also be null).
+bool hasKey(const nlohmann::json& j, const std::string& key) {
+    try {
+        j.at(key);
+        return true;
+    }
+    catch (const nlohmann::json::out_of_range&) {
+        return false;
+    }
+}
+
+/// Serializes KeyBinding to json.
+void to_json(nlohmann::json& json, const KeyMap::KeyBinding& keyBinding) {
+    if (keyBinding.key) {
+        json["key"] = *keyBinding.key;
+    }
+    if (keyBinding.mouseButton) {
+        json["mouseButton"] = to_string(*keyBinding.mouseButton);
+    }
+    json["ctrl"] = keyBinding.ctrl;
+    json["action"] = keyBinding.action;
+}
+
+/// Deserializes KeyBinding from json.
+void from_json(const nlohmann::json& json, KeyMap::KeyBinding& keyBinding) {
+    keyBinding.key = tl::nullopt;
+    if (hasKey(json, "key"))
+        keyBinding.key = json["key"].get<std::string>();
+
+    keyBinding.mouseButton = tl::nullopt;
+    if (hasKey(json, "mouseButton"))
+        keyBinding.mouseButton = from_string<KeyMap::MouseButton>(json["mouseButton"].get<std::string>());
+
+    keyBinding.ctrl = json.value("ctrl", false);
+    keyBinding.action = json["action"].get<std::string>();
+}
+
+/// Serializes KeyMap to json.
+void to_json(nlohmann::json& json, const KeyMap& keyMap) {
+    json["name"] = keyMap.name;
+    if (keyMap.parent)
+        json["parent"] = *keyMap.parent;
+    json["bindings"] = keyMap.bindings;
+}
+
+/// Deserializes KeyMap from json.
+void from_json(const nlohmann::json& json, KeyMap& keyMap) {
+    keyMap.name = json["name"].get<std::string>();
+    keyMap.parent = tl::nullopt;
+    if (hasKey(json, "parent"))
+        keyMap.parent = json["parent"].get<std::string>();
+
+    keyMap.bindings.clear();
+    if (hasKey(json, "bindings"))
+        json.at("bindings").get_to(keyMap.bindings);
+}
+
 /// Serializes EditorConfig to json.
 void to_json(nlohmann::json& json, const EditorConfig& editorConfig) {
     json["tabWidh"] = editorConfig.tabWidh;
+    json["keyMaps"] = editorConfig.keyMaps;
 }
 
 /// Deserializes EditorConfig from json.
 void from_json(const nlohmann::json& json, EditorConfig& editorConfig) {
     editorConfig.tabWidh = json.value("tabWidh", editorConfig.tabWidh);
+    editorConfig.keyMaps = json.value("keyMaps", editorConfig.keyMaps);
 }
 
 /// Used to load editor config from default location at program start. @todo Remove this feature later.
