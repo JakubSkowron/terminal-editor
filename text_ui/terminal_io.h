@@ -4,11 +4,20 @@
 #ifndef TERMINAL_IO_H
 #define TERMINAL_IO_H
 
-#include <termios.h>
+#include "editor_config.h"
+
 #include <condition_variable>
 #include <mutex>
 #include <queue>
 #include <thread>
+#include <string>
+#include <tl/optional.hpp>
+
+#ifndef WIN32
+#include <termios.h>
+#else
+#include <windows.h>
+#endif
 
 namespace terminal {
 
@@ -29,8 +38,15 @@ class TerminalRawMode {
   /* Restores state in destructor. */
   ~TerminalRawMode();
 
- private:
+private:
+#ifndef WIN32
   ::termios tios_backup;
+#else
+  HANDLE hOut;
+  HANDLE hIn;
+  DWORD dwOriginalOutMode;
+  DWORD dwOriginalInMode;
+#endif
 };
 
 /* Turn on mouse tracking */
@@ -70,6 +86,12 @@ union Event {
     int height;
   } window_size;
 };
+
+/// Returns action that is bound to given Event.
+/// @param contextName      Name of the key map to use.
+/// @param event            Event to check for actions in key map.
+/// @param editorConfig     EditorConfig that contains key maps.
+tl::optional<std::string> getActionForEvent(const std::string& contextName, const Event& event, const terminal_editor::EditorConfig& editorConfig);
 
 // Returns code | 0x40, i.e. 1 -> 'A'
 // Useful to compare code with a Ctrl-Key
