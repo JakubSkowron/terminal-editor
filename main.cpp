@@ -3,12 +3,15 @@
 
 #include "text_ui.h"
 #include "editor_config.h"
+#include "screen_buffer.h"
+#include "zlogging.h"
 
 #include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <deque>
 #include <string>
+#include <sstream>
 #include <thread>
 
 /* Using ANSI and xterm escape codes. It works in PuTTy, gnome-terminal,
@@ -18,39 +21,32 @@
 static int stdin_fd = ::fileno(stdin);
 static int stdout_fd = ::fileno(stdout);
 
-void message_box(std::string message) {
-  auto len = static_cast<int>(message.length());  // TODO: count UTF-8 characters
-  len = std::min(terminal_size::width - 4, len);  // clamp length of message
+void message_box(terminal_editor::ScreenBuffer& screenBuffer, const std::string& message) {
+    auto fgColor = terminal_editor::Color::Cyan;
+    auto bgColor = terminal_editor::Color::Blue;
+    auto style = terminal_editor::Style::Normal;
 
-  int box_width = len + 4;
-  int x = terminal_size::width / 2 - box_width / 2;
-  int y = terminal_size::height / 2 - 2;  // TODO: checks for too small height
-  terminal::cursor_goto(x, y);
-  std::string horizontal_bar;
-  for (int i = 0; i < box_width - 2; ++i) horizontal_bar += "─";
+    auto len = static_cast<int>(message.length());  // TODO: count UTF-8 characters
+    len = std::min(screenBuffer.getWidth() - 4, len);  // clamp length of message
 
-  // set foreground cyan, background blue
-  std::fputs("\x1B[36;44m", stdout);
+    int box_width = len + 4;
+    int x = screenBuffer.getWidth() / 2 - box_width / 2;
+    int y = screenBuffer.getHeight() / 2 - 2;  // TODO: checks for too small height
 
-  std::printf("┌%s┐", horizontal_bar.c_str());
+    std::string horizontal_bar;
+    for (int i = 0; i < box_width - 2; ++i) horizontal_bar += "─";
 
-  y += 1;
-  terminal::cursor_goto(x, y);
-  std::fputs("│ ", stdout);
-  // set foreground bold, white
-  std::fputs("\x1B[1;37m", stdout);
-  std::fputs(message.c_str(), stdout);
-  // set foreground regular, cyan
-  std::fputs("\x1B[22;36m", stdout);
-  std::fputs(" │", stdout);
+    std::string topBar = "┌" + horizontal_bar + "┐";
+    screenBuffer.print(x, y, topBar, fgColor, bgColor, style);
 
-  y += 1;
-  terminal::cursor_goto(x, y);
-  std::printf("└%s┘", horizontal_bar.c_str());
-  std::fflush(stdout);
+    y += 1;
+    screenBuffer.print(x, y, "│ ", fgColor, bgColor, style);
+    screenBuffer.print(x + 2, y, message, terminal_editor::Color::White, bgColor, terminal_editor::Style::Bold);
+    screenBuffer.print(x + 2 + len, y, " │", fgColor, bgColor, style);
 
-  // set foreground black, background white
-  std::fputs("\x1B[30;47m", stdout);
+    y += 1;
+    std::string bottomBar = "└" + horizontal_bar + "┘";
+    screenBuffer.print(x, y, bottomBar, fgColor, bgColor, style);
 }
 
 // This is a super ugly hack. I have no idea why this is necessary,
@@ -60,66 +56,72 @@ void message_box(std::string message) {
 #define _u8(x) u8 ## x
 #endif
 
-void draw_box() {
-  // top line
-  terminal::cursor_goto(1, 1);
-  std::fputs(_u8("┌"), stdout);
-  for (int x = 2; x < terminal_size::width; x += 1) {
-    if (x % 10 == 1) {
-      std::fputs(_u8("┬"), stdout);
-      continue;
+void draw_box(terminal_editor::ScreenBuffer& screenBuffer) {
+    auto fgColor = terminal_editor::Color::White;
+    auto bgColor = terminal_editor::Color::Black;
+    auto style = terminal_editor::Style::Normal;
+
+    // top line
+    screenBuffer.print(0, 0, _u8("┌"), fgColor, bgColor, style);
+    for (int x = 1; x < screenBuffer.getWidth() - 1; x += 1) {
+        if (x % 10 == 0) {
+            screenBuffer.print(x, 0, _u8("┬"), fgColor, bgColor, style);
+            continue;
+        }
+
+        screenBuffer.print(x, 0, _u8("─"), fgColor, bgColor, style);
+    }
+    screenBuffer.print(screenBuffer.getWidth() - 1, 0, _u8("┐"), fgColor, bgColor, style);
+
+    // two vertical lines at 1, and at width
+    for (int y = 1; y < screenBuffer.getHeight() - 1; y += 1) {
+        screenBuffer.print(0, y, y % 5 == 0 ? _u8("├") : _u8("│"), fgColor, bgColor, style);
+        screenBuffer.print(screenBuffer.getWidth() - 1, y, y % 5 == 0 ? _u8("┤") : _u8("│"), fgColor, bgColor, style);
     }
 
-    std::fputs(_u8("─"), stdout);
-  }
-  std::fputs(_u8("┐"), stdout);
+    // bottom line
+    screenBuffer.print(0, screenBuffer.getHeight() - 1, _u8("└"), fgColor, bgColor, style);
+    for (int x = 1; x < screenBuffer.getWidth() - 1; x += 1) {
+        if (x % 10 == 0) {
+            screenBuffer.print(x, screenBuffer.getHeight() - 1, _u8("┴"), fgColor, bgColor, style);
+            continue;
+        }
 
-  // two vertical lines at 1, and at width
-  for (int y = 2; y < terminal_size::height; y += 1) {
-    terminal::cursor_goto(1, y);
-    std::fputs(y % 5 == 1 ? _u8("├") : _u8("│"), stdout);
-    terminal::cursor_goto(terminal_size::width, y);
-    std::fputs(y % 5 == 1 ? _u8("┤") : _u8("│"), stdout);
-  }
-
-  // bottom line
-  terminal::cursor_goto(1, terminal_size::height);
-  std::fputs(_u8("└"), stdout);
-  for (int x = 2; x < terminal_size::width; x += 1) {
-    if (x % 10 == 1) {
-      std::fputs(_u8("┴"), stdout);
-      continue;
+        screenBuffer.print(x, screenBuffer.getHeight() - 1, _u8("─"), fgColor, bgColor, style);
     }
-
-    std::fputs(_u8("─"), stdout);
-  }
-  std::fputs(_u8("┘"), stdout);
+    screenBuffer.print(screenBuffer.getWidth() - 1, screenBuffer.getHeight() - 1, _u8("┘"), fgColor, bgColor, style);
 }
 
-void horizontal_lines() {
-  for (int y = 6; y < terminal_size::height; y += 5) {
-    terminal::cursor_goto(2, y);
-    for (int x = 2; x < terminal_size::width; x += 1) {
-      if (x % 10 == 1) {
-        std::fputs(_u8("┼"), stdout);
-        continue;
-      }
+void horizontal_lines(terminal_editor::ScreenBuffer& screenBuffer) {
+    auto fgColor = terminal_editor::Color::White;
+    auto bgColor = terminal_editor::Color::Black;
+    auto style = terminal_editor::Style::Normal;
 
-      std::fputs(_u8("─"), stdout);
+    for (int y = 5; y < screenBuffer.getHeight() - 1; y += 5) {
+        for (int x = 1; x < screenBuffer.getWidth() - 1; x += 1) {
+            if (x % 10 == 0) {
+                screenBuffer.print(x, y, _u8("┼"), fgColor, bgColor, style);
+                continue;
+            }
+
+            screenBuffer.print(x, y, _u8("─"), fgColor, bgColor, style);
+        }
     }
-  }
 }
 
-void vertical_lines() {
-  for (int y = 2; y < terminal_size::height; y += 1) {
-    if (y % 5 == 1) {
-      continue;
+void vertical_lines(terminal_editor::ScreenBuffer& screenBuffer) {
+    auto fgColor = terminal_editor::Color::White;
+    auto bgColor = terminal_editor::Color::Black;
+    auto style = terminal_editor::Style::Normal;
+
+    for (int y = 1; y < screenBuffer.getHeight() - 1; y += 1) {
+        if (y % 5 == 0) {
+            continue;
+        }
+        for (int x = 10; x < screenBuffer.getWidth() - 1; x += 10) {
+            screenBuffer.print(x, y, _u8("│"), fgColor, bgColor, style);
+        }
     }
-    for (int x = 11; x < terminal_size::width; x += 10) {
-      terminal::cursor_goto(x, y);
-      std::fputs(_u8("│"), stdout);
-    }
-  }
 }
 
 // TODO: make possible more than one listner at a time
@@ -140,6 +142,8 @@ class OnScreenResize {
 int main() {
   using namespace std::chrono_literals;
   try {
+    terminal_editor::ScreenBuffer screenBuffer;
+
     terminal::TerminalRawMode raw_terminal_scope;
     terminal::FullscreenOn fullscreen_scope;    // @todo For some reason this caused weird problems on Windows: the program cannot be rerun - restart of Visual Studio is required.
     terminal::HideCursor hide_cursor_scope;
@@ -155,40 +159,45 @@ int main() {
     }};
 
     std::deque<std::string> line_buffer;
-    auto push_line = [&line_buffer](std::string line) {
+    auto push_line = [&screenBuffer, &line_buffer](std::string line) {
       line_buffer.push_back(line);
-      while (line_buffer.size() > 0 && static_cast<int>(line_buffer.size()) > terminal_size::height - 3) {
+      while (line_buffer.size() > 0 && static_cast<int>(line_buffer.size()) > screenBuffer.getHeight() - 3) {
         line_buffer.pop_front();
       }
     };
 
-    auto redraw = [&line_buffer]() {
-      // set foreground black, background white
-      std::fputs("\x1B[30;47m", stdout);
-      // clear screen, move cursor to top-left corner
-      std::fputs("\x1B[2J", stdout);
-      draw_box();
-      horizontal_lines();
-      vertical_lines();
-      terminal::cursor_goto(2, 2);
-      std::printf("Screen size %dx%d\n", terminal_size::width, terminal_size::height);
-      int line_number = 3;
+    auto redraw = [&screenBuffer, &line_buffer]() {
+      screenBuffer.clear(terminal_editor::Color::Bright_White);
+      draw_box(screenBuffer);
+      horizontal_lines(screenBuffer);
+      vertical_lines(screenBuffer);
+
+      std::stringstream str;
+      str << "Screen size " << screenBuffer.getWidth() << "x" << screenBuffer.getHeight();
+      screenBuffer.print(1, 1, str.str(), terminal_editor::Color::White, terminal_editor::Color::Black, terminal_editor::Style::Normal);
+
+      int line_number = 2;
       for (auto& line : line_buffer) {
-        terminal::cursor_goto(2, line_number++);
-        std::puts(line.c_str());
+          screenBuffer.print(1, line_number, line, terminal_editor::Color::White, terminal_editor::Color::Black, terminal_editor::Style::Normal);
+          line_number++;
+          if (line_number >= screenBuffer.getHeight())
+              break;
       }
     };
 
     std::string message = "Press Ctrl-Q to exit...";
 
     while (true) {
+      screenBuffer.present();
+
       // wait for input event
       terminal::Event e = event_queue.poll();
 
       auto action = terminal::getActionForEvent("global", e, terminal_editor::getEditorConfig());
       if (action) {
           redraw();
-          message_box(*action);
+          message_box(screenBuffer, *action);
+          screenBuffer.present();
 
           if (*action == "quit") {
               std::this_thread::sleep_for(1s);
@@ -201,7 +210,7 @@ int main() {
         case terminal::Event::Type::KeyPressed: {
           if (e.keypressed.ctrl == true && terminal::ctrl_to_key(e.keypressed.keys[0]) == 'Q') {
             redraw();
-            message_box("Good bye");
+            message_box(screenBuffer, "Good bye");
             std::this_thread::sleep_for(1s);
             return 0;
           }
@@ -219,12 +228,16 @@ int main() {
           if (key.size() == 1) message += " (" + std::to_string(e.keypressed.keys[0]) + ")";
           push_line(message);
           redraw();
-          message_box(message + " Press Ctrl-Q to exit.");
+          message_box(screenBuffer, message + " Press Ctrl-Q to exit.");
           break;
         }
         case terminal::Event::Type::WindowSize:
+          if ( (terminal_size::width != screenBuffer.getWidth()) || (terminal_size::height != screenBuffer.getHeight()) ) {
+              screenBuffer.resize(terminal_size::width, terminal_size::height);
+          }
+
           redraw();
-          message_box(message);
+          message_box(screenBuffer, message);
           break;
         case terminal::Event::Type::Esc: {
           std::string message = "Esc ";
@@ -240,12 +253,11 @@ int main() {
         }
         default:  // TODO: handle other events
           redraw();
-          message_box("Default");
+          message_box(screenBuffer, "Default");
       }
     }
 
   } catch (std::exception& e) {
-    std::fputs(e.what(), stderr);
-    std::fputs("\n", stderr);
+    LOG() << "Exception in main: " << e.what();
   }
 }

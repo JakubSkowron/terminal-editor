@@ -175,6 +175,8 @@ set(APP_NAME terminal-editor)
 
 set(APP_SOURCES
     main.cpp
+    screen_buffer.h
+    screen_buffer.cpp
 
     README.md
     )
