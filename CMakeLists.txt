@@ -151,10 +151,10 @@ set(LIB_SOURCES
     zwcwidth.h
     )
 
-if(WIN32)
+#if(WIN32)
     list(APPEND LIB_SOURCES "${CMAKE_SOURCE_DIR}/third_party/mk_wcswidth/mk_wcswidth/mk_wcwidth.h")
     list(APPEND LIB_SOURCES "${CMAKE_SOURCE_DIR}/third_party/mk_wcswidth/mk_wcswidth/mk_wcwidth.cpp")
-endif()
+#endif()
 
 add_library(${LIB_NAME} ${LIB_SOURCES})
 #set_target_properties(${LIB_NAME} PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}")
