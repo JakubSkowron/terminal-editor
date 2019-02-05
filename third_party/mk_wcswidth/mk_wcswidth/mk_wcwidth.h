@@ -62,6 +62,7 @@
  */
 
 #include <cstdint>
+#include <cstddef>
 
 namespace mk {
 

@@ -59,10 +59,10 @@ public:
 
     ~LogHelper() noexcept(false) {
         auto messageStr = message.str();
-        if ( (logLevel == LogLevel::ERROR) || (logLevel == LogLevel::WARNING) )
+        //if ( (logLevel == LogLevel::ERROR) || (logLevel == LogLevel::WARNING) )
             std::cerr << messageStr << std::endl;
-        else
-            std::cout << messageStr << std::endl;
+        //else
+        //    std::cout << messageStr << std::endl;
     }
 };
 

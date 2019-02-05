@@ -13,7 +13,7 @@
 
 namespace terminal_editor {
 
-#ifdef WIN32
+#if 1
 
 /// Returns number of columns required to represent given character.
 /// Returns 0 for zero width caracters.
