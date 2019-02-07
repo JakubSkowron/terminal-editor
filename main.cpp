@@ -21,10 +21,10 @@
 static int stdin_fd = ::fileno(stdin);
 static int stdout_fd = ::fileno(stdout);
 
-void message_box(terminal_editor::ScreenBuffer& screenBuffer, const std::string& message) {
-    auto fgColor = terminal_editor::Color::Cyan;
-    auto bgColor = terminal_editor::Color::Blue;
-    auto style = terminal_editor::Style::Normal;
+void message_box(terminal::ScreenBuffer& screenBuffer, const std::string& message) {
+    auto fgColor = terminal::Color::Cyan;
+    auto bgColor = terminal::Color::Blue;
+    auto style = terminal::Style::Normal;
 
     auto len = static_cast<int>(message.length());  // TODO: count UTF-8 characters
     len = std::min(screenBuffer.getWidth() - 4, len);  // clamp length of message
@@ -41,7 +41,7 @@ void message_box(terminal_editor::ScreenBuffer& screenBuffer, const std::string&
 
     y += 1;
     screenBuffer.print(x, y, "│ ", fgColor, bgColor, style);
-    screenBuffer.print(x + 2, y, message, terminal_editor::Color::White, bgColor, terminal_editor::Style::Bold);
+    screenBuffer.print(x + 2, y, message, terminal::Color::White, bgColor, terminal::Style::Bold);
     screenBuffer.print(x + 2 + len, y, " │", fgColor, bgColor, style);
 
     y += 1;
@@ -56,10 +56,10 @@ void message_box(terminal_editor::ScreenBuffer& screenBuffer, const std::string&
 #define _u8(x) u8 ## x
 #endif
 
-void draw_box(terminal_editor::ScreenBuffer& screenBuffer) {
-    auto fgColor = terminal_editor::Color::White;
-    auto bgColor = terminal_editor::Color::Black;
-    auto style = terminal_editor::Style::Normal;
+void draw_box(terminal::ScreenBuffer& screenBuffer) {
+    auto fgColor = terminal::Color::White;
+    auto bgColor = terminal::Color::Black;
+    auto style = terminal::Style::Normal;
 
     // top line
     screenBuffer.print(0, 0, _u8("┌"), fgColor, bgColor, style);
@@ -92,10 +92,10 @@ void draw_box(terminal_editor::ScreenBuffer& screenBuffer) {
     screenBuffer.print(screenBuffer.getWidth() - 1, screenBuffer.getHeight() - 1, _u8("┘"), fgColor, bgColor, style);
 }
 
-void horizontal_lines(terminal_editor::ScreenBuffer& screenBuffer) {
-    auto fgColor = terminal_editor::Color::White;
-    auto bgColor = terminal_editor::Color::Black;
-    auto style = terminal_editor::Style::Normal;
+void horizontal_lines(terminal::ScreenBuffer& screenBuffer) {
+    auto fgColor = terminal::Color::White;
+    auto bgColor = terminal::Color::Black;
+    auto style = terminal::Style::Normal;
 
     for (int y = 5; y < screenBuffer.getHeight() - 1; y += 5) {
         for (int x = 1; x < screenBuffer.getWidth() - 1; x += 1) {
@@ -109,10 +109,10 @@ void horizontal_lines(terminal_editor::ScreenBuffer& screenBuffer) {
     }
 }
 
-void vertical_lines(terminal_editor::ScreenBuffer& screenBuffer) {
-    auto fgColor = terminal_editor::Color::White;
-    auto bgColor = terminal_editor::Color::Black;
-    auto style = terminal_editor::Style::Normal;
+void vertical_lines(terminal::ScreenBuffer& screenBuffer) {
+    auto fgColor = terminal::Color::White;
+    auto bgColor = terminal::Color::Black;
+    auto style = terminal::Style::Normal;
 
     for (int y = 1; y < screenBuffer.getHeight() - 1; y += 1) {
         if (y % 5 == 0) {
@@ -142,7 +142,7 @@ class OnScreenResize {
 int main() {
   using namespace std::chrono_literals;
   try {
-    terminal_editor::ScreenBuffer screenBuffer;
+    terminal::ScreenBuffer screenBuffer;
 
     terminal::TerminalRawMode raw_terminal_scope;
     terminal::FullscreenOn fullscreen_scope;    // @todo For some reason this caused weird problems on Windows: the program cannot be rerun - restart of Visual Studio is required.
@@ -167,18 +167,18 @@ int main() {
     };
 
     auto redraw = [&screenBuffer, &line_buffer]() {
-      screenBuffer.clear(terminal_editor::Color::Bright_White);
+      screenBuffer.clear(terminal::Color::Bright_White);
       draw_box(screenBuffer);
       horizontal_lines(screenBuffer);
       vertical_lines(screenBuffer);
 
       std::stringstream str;
       str << "Screen size " << screenBuffer.getWidth() << "x" << screenBuffer.getHeight();
-      screenBuffer.print(1, 1, str.str(), terminal_editor::Color::White, terminal_editor::Color::Black, terminal_editor::Style::Normal);
+      screenBuffer.print(1, 1, str.str(), terminal::Color::White, terminal::Color::Black, terminal::Style::Normal);
 
       int line_number = 2;
       for (auto& line : line_buffer) {
-          screenBuffer.print(1, line_number, line, terminal_editor::Color::White, terminal_editor::Color::Black, terminal_editor::Style::Normal);
+          screenBuffer.print(1, line_number, line, terminal::Color::White, terminal::Color::Black, terminal::Style::Normal);
           line_number++;
           if (line_number >= screenBuffer.getHeight())
               break;
@@ -211,6 +211,7 @@ int main() {
           if (e.keypressed.ctrl == true && terminal::ctrl_to_key(e.keypressed.keys[0]) == 'Q') {
             redraw();
             message_box(screenBuffer, "Good bye");
+            screenBuffer.present();
             std::this_thread::sleep_for(1s);
             return 0;
           }

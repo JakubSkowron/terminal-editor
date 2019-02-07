@@ -101,35 +101,35 @@ TerminalRawMode::TerminalRawMode() {
     //_setmode(_fileno(stdout), _O_U8TEXT); // @note This breaks stuff.
 
     if (!SetConsoleOutputCP(CP_UTF8))
-        ZTHROW() << "Could not set console output code page to UTF-8.";
+        ZTHROW() << "Could not set console output code page to UTF-8: " << GetLastError();
 
     if (!SetConsoleCP(CP_UTF8))
-        ZTHROW() << "Could not set console input code page to UTF-8.";
+        ZTHROW() << "Could not set console input code page to UTF-8: " << GetLastError();
 
     // Set output mode to handle virtual terminal sequences
     hOut = GetStdHandle(STD_OUTPUT_HANDLE);
     if (hOut == INVALID_HANDLE_VALUE)
-        ZTHROW() << "Could not get console output handle.";
+        ZTHROW() << "Could not get console output handle: " << GetLastError();
 
     hIn = GetStdHandle(STD_INPUT_HANDLE);
     if (hIn == INVALID_HANDLE_VALUE)
-        ZTHROW() << "Could not get console input handle.";
+        ZTHROW() << "Could not get console input handle: " << GetLastError();
 
     dwOriginalOutMode = 0;
     dwOriginalInMode = 0;
     if (!GetConsoleMode(hOut, &dwOriginalOutMode))
-        ZTHROW() << "Could not get console output mode.";
+        ZTHROW() << "Could not get console output mode: " << GetLastError();
 
     if (!GetConsoleMode(hIn, &dwOriginalInMode))
-        ZTHROW() << "Could not get console input mode.";
+        ZTHROW() << "Could not get console input mode: " << GetLastError();
 
     DWORD dwOutMode = dwOriginalOutMode | (ENABLE_VIRTUAL_TERMINAL_PROCESSING | DISABLE_NEWLINE_AUTO_RETURN) & ~(ENABLE_PROCESSED_OUTPUT | ENABLE_WRAP_AT_EOL_OUTPUT | ENABLE_LVB_GRID_WORLDWIDE);
     if (!SetConsoleMode(hOut, dwOutMode))
-        ZTHROW() << "Could not set console output mode.";
+        ZTHROW() << "Could not set console output mode: " << GetLastError();
 
     DWORD dwInMode = dwOriginalInMode | (ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT | ENABLE_VIRTUAL_TERMINAL_INPUT) & ~(ENABLE_PROCESSED_INPUT | ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_INSERT_MODE);
     if (!SetConsoleMode(hIn, dwInMode))
-        ZTHROW() << "Could not set console input mode.";
+        ZTHROW() << "Could not set console input mode: " << GetLastError();
 #endif
 }
 
@@ -140,10 +140,10 @@ TerminalRawMode::~TerminalRawMode() {
         std::perror(__func__);
 #else
     if (!SetConsoleMode(hOut, dwOriginalOutMode))
-        LOG() << "Could not revert console output mode.";
+        LOG() << "Could not revert console output mode: " << GetLastError();
 
     if (!SetConsoleMode(hIn, dwOriginalInMode))
-        LOG() << "Could not revert console input mode.";
+        LOG() << "Could not revert console input mode: " << GetLastError();
 #endif
 }
 
@@ -192,6 +192,8 @@ Event EventQueue::poll() {
 #ifdef WIN32
 tl::optional<std::string> readConsole() {
     static HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE); 
+    if (hStdin == INVALID_HANDLE_VALUE)
+        ZHARDASSERT(false) << "Could not get console input handle: " << GetLastError();
 
     DWORD cNumRead; 
     INPUT_RECORD irInBuf[128]; 
@@ -202,7 +204,7 @@ tl::optional<std::string> readConsole() {
         128,         // size of read buffer 
         &cNumRead)) // number of records read 
     {
-        ZHARDASSERT(false);
+        ZHARDASSERT(false) << "Could not read input from console: " << GetLastError();
     }
 
     std::string txt;

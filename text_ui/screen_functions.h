@@ -4,6 +4,8 @@
 #ifndef SCREEN_FUNCTIONS_H
 #define SCREEN_FUNCTIONS_H
 
+#include <iostream>
+
 namespace terminal {
 
 class FullscreenOn {
@@ -24,7 +26,10 @@ class HideCursor {
   ~HideCursor();
 };
 
+/// @note x and y are 0 based.
 void cursor_goto(int x, int y);
+/// @note x and y are 0 based.
+void cursor_goto(std::ostream& os, int x, int y);
 
 }  // namespace terminal
 

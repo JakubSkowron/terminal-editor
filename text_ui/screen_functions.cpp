@@ -14,10 +14,13 @@ static void fputs_ex(const char* s, std::FILE* stream, const char* err_msg) {
 
 namespace terminal {
 
-/// @note x and y are 0 based.
 void cursor_goto(int x, int y) {
-  int ret = std::printf("\x1B[%d;%dH", y + 1, x + 1);
-  if (ret < 0) throw std::system_error(errno, std::generic_category(), __func__);
+    int ret = std::printf("\x1B[%d;%dH", y + 1, x + 1);
+    if (ret < 0) throw std::system_error(errno, std::generic_category(), __func__);
+}
+
+void cursor_goto(std::ostream& os, int x, int y) {
+    os << "\x1B[" << (y + 1) << ";" << (x + 1) << "H";
 }
 
 FullscreenOn::FullscreenOn() {

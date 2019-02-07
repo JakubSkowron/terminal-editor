@@ -5,7 +5,7 @@
 
 #include <gsl/span>
 
-namespace terminal_editor {
+namespace terminal {
 
 enum class Color {
     Black	        = 30,
@@ -83,4 +83,4 @@ public:
     void present();
 };
 
-} // namespace terminal_editor
+} // namespace terminal
