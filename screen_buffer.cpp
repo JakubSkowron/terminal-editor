@@ -166,11 +166,9 @@ void ScreenBuffer::present() {
 #endif
 
     int currentStyleHash = 0;
+    int curX = -1;
+    int curY = -1;
     for (int y = 0; y < height; ++y) {
-        // Go to begining of the line.
-        cursor_goto(ss, 0, y);
-
-        int curX = 0;
         for (int i = 0; i < width; ++i) {
             const auto& character = characters[y * width + i];
             if (character.width == 0)
@@ -182,9 +180,10 @@ void ScreenBuffer::present() {
                     continue;
             }
 
-            ZASSERT(i >= curX);
-            if (i > curX) {
-                cursor_goto(ss, i, y);
+            if ((i != curX) || (y != curY)) {
+                curX = i;
+                curY = y;
+                cursor_goto(ss, curX, curY);
             }
 
             currentStyleHash = setStyle(ss, currentStyleHash, character.fgColor, character.bgColor, character.style);
