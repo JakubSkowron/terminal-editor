@@ -13,20 +13,20 @@ if(MSVC)
 else()
     if(ENABLE_ADDRESS_SANITIZER)
         # Sometimes doesn't work because -lasan is not linked.
-        message(status "Address sanitizer enabled.")
+        message(STATUS "Address sanitizer enabled.")
         set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address -O2")
         set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
     endif()
 
     if(ENABLE_THREAD_SANITIZER)
-        message(status "Thread sanitizer enabled.")
+        message(STATUS "Thread sanitizer enabled.")
         set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=thread")
         set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=thread")
     endif()
 
     if(ENABLE_UB_SANITIZER)
         # Doesn't work on gcc 7 on Ubuntu 16.04 because there is a bug in gcc.
-        message(status "UB sanitizer enabled.")
+        message(STATUS "UB sanitizer enabled.")
         set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=undefined")
         set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=undefined")
 
@@ -40,7 +40,7 @@ endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
     set(USING_CLANG ON)
-    message(status "Compiling using Clang.")
+    message(STATUS "Compiling using Clang.")
 else()
     set(USING_CLANG OFF)
 endif()
@@ -123,78 +123,24 @@ function(SetCompilerOptions targetName)
     endif()
 endfunction()
 
-# terminal-editor-library target
-
-set(LIB_NAME terminal-editor-library)
-
-set(LIB_SOURCES
-    format_source.sh
-
-    text_buffer.h
-    text_buffer.cpp
-
-    text_parser.h
-    text_parser.cpp
-
-    text_renderer.h
-    text_renderer.cpp
-
-    editor_config.h
-    editor_config.cpp
-
-    file_utilities.h
-    file_utilities.cpp
-
-    zpreprocessor.h
-    zerrors.h
-    zlogging.h
-    zwcwidth.h
-    )
-
-#if(WIN32)
-    list(APPEND LIB_SOURCES "${CMAKE_SOURCE_DIR}/third_party/mk_wcswidth/mk_wcswidth/mk_wcwidth.h")
-    list(APPEND LIB_SOURCES "${CMAKE_SOURCE_DIR}/third_party/mk_wcswidth/mk_wcswidth/mk_wcwidth.cpp")
-#endif()
-
-add_library(${LIB_NAME} ${LIB_SOURCES})
-#set_target_properties(${LIB_NAME} PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}")
-target_include_directories(${LIB_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_include_directories(${LIB_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/third_party/gsl-2.0.0")
-target_include_directories(${LIB_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/third_party/mk_wcswidth")
-target_include_directories(${LIB_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/third_party/tl")
-target_include_directories(${LIB_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/third_party/nlohmann-json-3.4.0")
-SetCompilerOptions(${LIB_NAME})
-
-# text_ui library
-
+add_subdirectory(utilities)
+add_subdirectory(editorlib)
 add_subdirectory(text_ui)
-
-# terminal-editor target
-
-set(APP_NAME terminal-editor)
-
-set(APP_SOURCES
-    main.cpp
-    screen_buffer.h
-    screen_buffer.cpp
-
-    README.md
-    )
-
-add_executable(${APP_NAME} ${APP_SOURCES})
-find_package(Threads)
-target_link_libraries(${APP_NAME} PRIVATE ${LIB_NAME} text_ui ${CMAKE_THREAD_LIBS_INIT})
-SetCompilerOptions(${APP_NAME})
-
-if(WIN32)
-    #set_target_properties(${APP_NAME} PROPERTIES VS_DEBUGGER_COMMAND_ARGUMENTS "ala")
-    set_target_properties(${APP_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
-endif()
-
-# Tests
-
+add_subdirectory(editor)
 add_subdirectory(tests)
 
+add_custom_target(LOOSE_FILES
+                  echo "Nothing to build for LOOSE_FILES."
+                  SOURCES
+                    LICENSE
+                    README.md
+                    .travis.yml
+                    appveyor.yml
+                    editor-config.json
+                    terminal_test_positions.sh
+                    format_source.sh
+                  )
+
 if(WIN32)
-    set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT editor-tests)
+    set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT terminal-editor)
 endif()

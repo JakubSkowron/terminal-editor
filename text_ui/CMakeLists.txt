@@ -11,6 +11,9 @@ set(LIB_SOURCES
 
     terminal_io.h
     terminal_io.cpp
+    
+    screen_buffer.h
+    screen_buffer.cpp
     )
 
 add_library(${LIB_NAME} ${LIB_SOURCES})

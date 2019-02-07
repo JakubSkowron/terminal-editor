@@ -208,7 +208,7 @@ void ScreenBuffer::present() {
     auto str = ss.str();
 #ifdef WIN32
     DWORD numberOfCharsWritten;
-    if (!WriteConsoleA(hOut, str.c_str(), str.size(), &numberOfCharsWritten, NULL)) {
+    if (!WriteConsoleA(hOut, str.c_str(), static_cast<DWORD>(str.size()), &numberOfCharsWritten, NULL)) {
         ZTHROW() << "Error while writing to console: " << GetLastError();
     }
 #else
