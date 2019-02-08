@@ -188,8 +188,11 @@ void EventQueue::push(Event e) {
   cv.notify_one();
 }
 
-Event EventQueue::poll() {
+tl::optional<Event> EventQueue::poll(bool block) {
   std::unique_lock<std::mutex> lock{mutex};
+  if (!block && queue.empty()) {
+    return tl::nullopt;
+  }
   while (queue.empty()) {
     cv.wait(lock);
   }

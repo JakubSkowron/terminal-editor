@@ -138,4 +138,11 @@ std::string renderGraphemes(gsl::span<const Grapheme> graphemes) {
     return ss.str();
 }
 
+int getRenderedWidth(gsl::span<const char> text) {
+    auto codePointInfos = parseLine(text);
+    auto graphemes = renderLine(codePointInfos);
+    auto length = std::accumulate(graphemes.begin(), graphemes.end(), 0, [](int sum, const Grapheme& grapheme) { return sum + grapheme.width; });
+    return length;
+}
+
 } // namespace terminal_editor

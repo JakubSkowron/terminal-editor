@@ -13,6 +13,10 @@
                     "action": "box"
                 },
                 {
+                    "key": "c",
+                    "action": "close"
+                },
+                {
                     "key": "k",
                     "action": "kill-box"
                 },

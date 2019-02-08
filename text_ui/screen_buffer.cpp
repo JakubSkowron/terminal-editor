@@ -32,7 +32,7 @@ void ScreenBuffer::clear(Color bgColor) {
     characters.resize(size.width * size.height, emptyCharacter);
 }
 
-void ScreenBuffer::print(int x, int y, const std::string& text, Color fgColor, Color bgColor, Style style) {
+void ScreenBuffer::print(int x, int y, const std::string& text, Attributes attributes) {
     auto codePointInfos = terminal_editor::parseLine(text);
     auto graphemes = terminal_editor::renderLine(codePointInfos);
 
@@ -44,8 +44,8 @@ void ScreenBuffer::print(int x, int y, const std::string& text, Color fgColor, C
     for (const auto& grapheme : graphemes) {
         ZASSERT(curX + grapheme.width <= size.width);
 
-        Character character { grapheme.rendered, grapheme.width, fgColor, bgColor, style };
-        Character emptyCharacter { "", 0, fgColor, bgColor, style };
+        Character character { grapheme.rendered, grapheme.width, attributes };
+        Character emptyCharacter { "", 0, attributes };
 
         // Find end of graphemes that are being overwritten.
         int endX = curX;
@@ -69,10 +69,10 @@ void ScreenBuffer::print(int x, int y, const std::string& text, Color fgColor, C
     }
 }
 
-int setStyle(std::ostream& os, int currentStyleHash, Color fgColor, Color bgColor, Style style) {
-    int fgColorCode = static_cast<int>(fgColor);
-    int bgColorCode = static_cast<int>(bgColor) + 10;
-    int styleCode = static_cast<int>(style);
+int setStyle(std::ostream& os, int currentStyleHash, Attributes attributes) {
+    int fgColorCode = static_cast<int>(attributes.fgColor);
+    int bgColorCode = static_cast<int>(attributes.bgColor) + 10;
+    int styleCode = static_cast<int>(attributes.style);
 
     int styleHash = (fgColorCode << 16) + (bgColorCode << 8) + styleCode;
     if (styleHash == currentStyleHash)
@@ -124,16 +124,16 @@ std::unordered_map<Color, WORD> bgColors = {
     { Color::Bright_White	, BACKGROUND_INTENSITY | BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE },
 };
 
-int setStyle(HANDLE hOut, int currentStyleHash, Color fgColor, Color bgColor, Style style) {
-    int fgColorCode = static_cast<int>(fgColor);
-    int bgColorCode = static_cast<int>(bgColor) + 10;
-    int styleCode = static_cast<int>(style);
+int setStyle(HANDLE hOut, int currentStyleHash, Attributes attributes) {
+    int fgColorCode = static_cast<int>(attributes.fgColor);
+    int bgColorCode = static_cast<int>(attributes.bgColor) + 10;
+    int styleCode = static_cast<int>(attributes.style);
 
     int styleHash = (fgColorCode << 16) + (bgColorCode << 8) + styleCode;
     if (styleHash == currentStyleHash)
         return styleHash;
 
-    WORD attributes = fgColors.at(fgColor) | bgColors.at(bgColor) | (style == Style::Bold ? COMMON_LVB_UNDERSCORE : 0);
+    WORD attributes = fgColors.at(attributes.fgColor) | bgColors.at(attributes.bgColor) | (attributes.style == Style::Bold ? COMMON_LVB_UNDERSCORE : 0);
     if (!SetConsoleTextAttribute(hOut, attributes)) {
         ZTHROW() << "Could not set console attributes: " << GetLastError();
     }
@@ -186,7 +186,7 @@ void ScreenBuffer::present() {
                 cursor_goto(ss, curX, curY);
             }
 
-            currentStyleHash = setStyle(ss, currentStyleHash, character.fgColor, character.bgColor, character.style);
+            currentStyleHash = setStyle(ss, currentStyleHash, character.attributes);
 
 #if USE_WIN32_CONSOLE
             DWORD numberOfCharsWritten;
@@ -237,11 +237,14 @@ void fill_rect(ScreenBuffer& screenBuffer, Rect rect, Color bgColor) {
     auto sizeX = rect.size.width;
     std::string blank(sizeX, ' ');
     for (int y = rect.topLeft.y; y < rect.bottomRight().y; ++y) {
-        screenBuffer.print(startX, y, blank, Color::White, bgColor, Style::Normal);
+        screenBuffer.print(startX, y, blank, { Color::White, bgColor, Style::Normal });
     }
 }
 
-void draw_rect(ScreenBuffer& screenBuffer, Rect clipRect, Rect rect, bool doubleEdge, bool fill, Color fgColor, Color bgColor, Style style) {
+void draw_rect(ScreenBuffer& screenBuffer, Rect clipRect, Rect rect, bool doubleEdge, bool fill, Attributes attributes) {
+    if (clipRect.isEmpty())
+        return;
+
     ZASSERT(Rect(screenBuffer.getSize()).contains(clipRect)) << "Clip rectangle must be fully contained inside the ScreenBuffer.";
 
     auto tl = (doubleEdge ? _u8("╔") : _u8("┌"));
@@ -253,11 +256,11 @@ void draw_rect(ScreenBuffer& screenBuffer, Rect clipRect, Rect rect, bool double
     auto bm = (doubleEdge ? _u8("═") : _u8("─"));
     auto br = (doubleEdge ? _u8("╝") : _u8("┘"));
 
-    auto print = [&screenBuffer, clipRect, rect, fgColor, bgColor, style](int x, int y, const std::string& txt) {
+    auto print = [&screenBuffer, clipRect, rect, attributes](int x, int y, const std::string& txt) {
         auto pt = Point(x, y) + rect.topLeft.asSize();
         if (!clipRect.contains(pt))
             return;
-        screenBuffer.print(pt.x, pt.y, txt, fgColor, bgColor, style);
+        screenBuffer.print(pt.x, pt.y, txt, attributes);
     };
 
     // top line
@@ -281,50 +284,67 @@ void draw_rect(ScreenBuffer& screenBuffer, Rect clipRect, Rect rect, bool double
     print(rect.size.width - 1, rect.size.height - 1, br);
 
     if (fill) {
-        fill_rect(screenBuffer, Rect(rect.topLeft + Size(1, 1), rect.bottomRight() - Size(1, 1)), bgColor);
+        auto innerRect = Rect(rect.topLeft + Size(1, 1), rect.bottomRight() - Size(1, 1));
+        innerRect = innerRect.intersect(clipRect);
+        fill_rect(screenBuffer, innerRect, attributes.bgColor);
     }
 }
 
-ScreenCanvas::ScreenCanvas(ScreenBuffer& screenBuffer, Rect rect) : m_screenBuffer(screenBuffer), m_rect(rect) {
-    //ZASSERT(Rect(screenBuffer.getSize()).contains(rect)) << "Canvas rect must be inside ScreenBuffer rect.";
-    m_rect = m_rect.intersect(Rect(m_screenBuffer.getSize()));
-    if (m_rect.isEmpty())
-        m_rect = Rect{ {0, 0}, Size{0, 0} };    // This is to make sure we can use getBounds() as a clipping region.
+ScreenCanvas::ScreenCanvas(ScreenBuffer& screenBuffer, Point origin, Rect clipRect)
+    : m_screenBuffer(screenBuffer)
+    , m_origin(origin)
+    , m_clipRect(clipRect)
+{
+    m_clipRect = m_clipRect.intersect(Rect(m_screenBuffer.getSize()));
+    if (m_clipRect.isEmpty())
+        m_clipRect = Rect{ Point{0, 0}, Size{0, 0} };    // This is to make sure we can use clipRect as a clipping region.
 }
 
 ScreenCanvas ScreenCanvas::getSubCanvas(Rect rect) {
-    rect = rect.intersect(getRect());
-    //rect.move(m_rect.topLeft.asSize());
-    return ScreenCanvas(m_screenBuffer, rect);
+    auto newOrigin = m_origin + rect.topLeft.asSize();
+
+    auto screenRect = rect;
+    screenRect.move(m_origin.asSize());
+
+    auto clipRect = screenRect.intersect(m_clipRect);
+
+    return ScreenCanvas(m_screenBuffer, newOrigin, clipRect);
 }
 
 void ScreenCanvas::fill(Rect rect, Color bgColor) {
-    rect = rect.intersect(getBounds());
-    fill_rect(m_screenBuffer, rect, bgColor);
+    auto screenRect = rect;
+    screenRect.move(m_origin.asSize());
+    screenRect = screenRect.intersect(m_clipRect);
+    fill_rect(m_screenBuffer, screenRect, bgColor);
 }
 
-void ScreenCanvas::rect(Rect rect, bool doubleEdge, bool fill, Color fgColor, Color bgColor, Style style) {
-    draw_rect(m_screenBuffer, getRect(), rect, doubleEdge, fill, fgColor, bgColor, style);
+void ScreenCanvas::rect(Rect rect, bool doubleEdge, bool fill, Attributes attributes) {
+    auto screenRect = rect;
+    screenRect.move(m_origin.asSize());
+    draw_rect(m_screenBuffer, m_clipRect, screenRect, doubleEdge, fill, attributes);
 }
 
-void ScreenCanvas::print(Point pt, const std::string& text, Color fgColor, Color bgColor, Style style) {
-    if (pt.y < getRect().topLeft.y) return;
-    if (pt.y >= getRect().bottomRight().y) return;
+void ScreenCanvas::print(Point pt, const std::string& text, Attributes normal, Attributes invalid, Attributes replacement) {
+    pt += m_origin.asSize();    // pt is in screen coordinates now.
+
+    if (pt.y < m_clipRect.topLeft.y) return;
+    if (pt.y >= m_clipRect.bottomRight().y) return;
+
     auto codePointInfos = terminal_editor::parseLine(text);
     auto graphemes = terminal_editor::renderLine(codePointInfos);
 
     int curX = pt.x;
     for (const auto& grapheme : graphemes) {
         // Skip graphemes beyond left boundary.
-        if (curX + grapheme.width <= getRect().topLeft.x) {
+        if (curX + grapheme.width <= m_clipRect.topLeft.x) {
             curX += grapheme.width;
             continue;
         }
 
         if (grapheme.kind == terminal_editor::GraphemeKind::NORMAL) {
             // Draw grapheme only if it fits on the canvas completely.
-            if ( (curX >= getRect().topLeft.x) && (curX + grapheme.width < getRect().bottomRight().x) ) {
-                m_screenBuffer.print(curX, pt.y, grapheme.rendered, fgColor, bgColor, style);
+            if ( (curX >= m_clipRect.topLeft.x) && (curX + grapheme.width <= m_clipRect.bottomRight().x) ) {
+                m_screenBuffer.print(curX, pt.y, grapheme.rendered, normal);
             }
 
             curX += grapheme.width;
@@ -334,8 +354,8 @@ void ScreenCanvas::print(Point pt, const std::string& text, Color fgColor, Color
             auto graphemesG = terminal_editor::renderLine(codePointInfosG);
             for (const auto& graphemeG : graphemesG) {
                 // Draw grapheme only if it fits on the canvas completely.
-                if ( (curX >= getRect().topLeft.x) && (curX + graphemeG.width < getRect().bottomRight().x) ) {
-                    m_screenBuffer.print(curX, pt.y, graphemeG.rendered, fgColor, bgColor, style);
+                if ( (curX >= m_clipRect.topLeft.x) && (curX + graphemeG.width <= m_clipRect.bottomRight().x) ) {
+                    m_screenBuffer.print(curX, pt.y, graphemeG.rendered, (grapheme.kind == terminal_editor::GraphemeKind::INVALID) ? invalid : replacement);
                 }
 
                 curX += graphemeG.width;
@@ -343,7 +363,7 @@ void ScreenCanvas::print(Point pt, const std::string& text, Color fgColor, Color
         }
 
         // Skip graphemes beyond right boundary.
-        if (curX >= getRect().bottomRight().x)
+        if (curX >= m_clipRect.bottomRight().x)
             break;
     }
 }

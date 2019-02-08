@@ -104,7 +104,7 @@ class EventQueue {
  public:
   void push(Event e);
   // locking function
-  Event poll();
+  tl::optional<Event> poll(bool block);
 
  private:
   std::queue<Event> queue;

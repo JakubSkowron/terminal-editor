@@ -35,47 +35,44 @@ enum class Style {
     Normal      = 22,
 };
 
+struct Attributes {
+    Color fgColor;
+    Color bgColor;
+    Style style;
+};
+
 class ScreenBuffer;
 
 class ScreenCanvas {
     ScreenBuffer& m_screenBuffer;
-    Rect m_rect;    ///< In screen coordinates.
+    Point m_origin;     ///< Point in screen coordinates that all drawing functions are relative to.
+    Rect m_clipRect;    ///< In screen coordinates.
 public:
-    /// rect will be clipped to screenBuffer bounds.
-    ScreenCanvas(ScreenBuffer& screenBuffer, Rect rect);
+    /// clipRect will be clipped to screenBuffer bounds.
+    ScreenCanvas(ScreenBuffer& screenBuffer, Point origin, Rect clipRect);
 
     /// Sub canvas will be clipped to this canvas size.
-    /// Rect is relative to this canvas.
+    /// @param rect     Sub rectangle of this canvas. Rect is relative to this canvas' origin.
     ScreenCanvas getSubCanvas(Rect rect);
-
-    Rect getRect() const {
-        return m_rect;
-    }
-
-    Rect getBounds() const {
-        return m_rect.size;
-    }
-
-    Size getSize() const {
-        return m_rect.size;
-    }
 
     /// Clears canvas to given color.
     void clear(Color bgColor) {
-        fill(getBounds(), bgColor);
+        auto localRect = m_clipRect;
+        localRect.move(-m_origin.asSize());  // In local coordinates.
+        fill(localRect, bgColor);
     }
 
     /// Draw filled rectangle.
     void fill(Rect rect, Color bgColor);
 
     /// Draw rectangle.
-    void rect(Rect rect, bool doubleEdge, bool fill, Color fgColor, Color bgColor, Style style);
+    void rect(Rect rect, bool doubleEdge, bool fill, Attributes attributes);
 
     /// Draws given text on the canvas.
     /// Text is clipped to boundaries of the canvas.
     /// So only graphemes fully inside the 
     /// @param text     Input string, doesn't have to be valid or printable UTF-8.
-    void print(Point pt, const std::string& text, Color fgColor, Color bgColor, Style style);
+    void print(Point pt, const std::string& text, Attributes normal, Attributes invalid, Attributes replacement);
 };
 
 class ScreenBuffer {
@@ -83,16 +80,14 @@ private:
     struct Character {
         std::string text;   ///< UTF-8 text to draw. If empty, then this place will be drawn by preceeding character with width > 1.
         int width;          ///< Width of text once it will be rendered.
-        Color fgColor;
-        Color bgColor;
-        Style style;
+        Attributes attributes;
 
         bool operator==(const Character& other) const {
             if (text != other.text) return false;
             if (width != other.width) return false;
-            if (fgColor != other.fgColor) return false;
-            if (bgColor != other.bgColor) return false;
-            if (style != other.style) return false;
+            if (attributes.fgColor != other.attributes.fgColor) return false;
+            if (attributes.bgColor != other.attributes.bgColor) return false;
+            if (attributes.style != other.attributes.style) return false;
             return true;
         }
     };
@@ -106,7 +101,7 @@ public:
     ScreenBuffer() : fullRepaintNeeded(true) {}
 
     ScreenCanvas getCanvas() {
-        return ScreenCanvas(*this, getSize());
+        return ScreenCanvas(*this, Point{0, 0}, getSize());
     }
 
     Size getSize() const {
@@ -130,7 +125,7 @@ public:
     /// Draws given text on the screen.
     /// Throws if text is not entirely on the screen.
     /// @param text     Input string, doesn't have to be valid or printable UTF-8.
-    void print(int x, int y, const std::string& text, Color fgColor, Color bgColor, Style style);
+    void print(int x, int y, const std::string& text, Attributes attributes);
 
     /// Draws this screen buffer to the console.
     void present();
@@ -142,6 +137,6 @@ void fill_rect(ScreenBuffer& screenBuffer, Rect rect, Color bgColor);
 
 /// Draws a rectangle with borders.
 /// Rectangle is clipped by the clipRect. clipRect must be wholy inside screen buffer.
-void draw_rect(ScreenBuffer& screenBuffer, Rect clipRect, Rect rect, bool doubleEdge, bool fill, Color fgColor, Color bgColor, Style style);
+void draw_rect(ScreenBuffer& screenBuffer, Rect clipRect, Rect rect, bool doubleEdge, bool fill, Attributes attributes);
 
 } // namespace terminal

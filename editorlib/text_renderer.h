@@ -45,4 +45,10 @@ std::vector<Grapheme> renderLine(gsl::span<CodePointInfo> codePointInfos);
 /// @param graphemes    Span of graphemes to concatenate.
 std::string renderGraphemes(gsl::span<const Grapheme> graphemes);
 
+/// Returns width of given text after rendering on screen.
+/// @note This functions takes into consideration replacement strings, and thus differs from wcswidth().
+/// @note This function is very slow, as it needs to convert text to graphemes first.
+/// @param text     UTF-8 string, can be invalid.
+int getRenderedWidth(gsl::span<const char> text);
+
 } // namespace terminal_editor

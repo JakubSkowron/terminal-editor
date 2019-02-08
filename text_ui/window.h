@@ -14,16 +14,31 @@
 
 namespace terminal {
 
+class WindowManager;
+
 class Window {
+private:
+    WindowManager* m_windowManager;   ///< Reference to the WindowManager that is coordinating this window. All windows must die before their windows manager.
     std::string m_name; ///< Name of this window. Debug only. Doesn't have to be unique. (This is not the same thing as window title.)
     Window* m_parent;   ///< Parent of the Window. Can be nullptr only for windows that are not chilren of another window.
-    Rect m_rect;        ///< Window position, @todo relative to parent.
+    Rect m_rect;        ///< Window position, relative to parent.
     std::vector<std::unique_ptr<Window>> m_children;
-public:
-    Window(const std::string& name, Rect rect) : m_name(name), m_parent(nullptr), m_rect(rect) {}
 
-    /// Empty virtual destructor.
-    virtual ~Window() {}
+public:
+    /// Notifies Window Manager that Window is created.
+    Window(WindowManager* windowManager, const std::string& name, Rect rect);
+
+    /// Notifies Window Manager that Window dies.
+    virtual ~Window();
+
+    /// Returns this window's window manager.
+    WindowManager* getWindowManager() {
+        return m_windowManager;
+    }
+
+    /// Destroys this window. Moves focus to parent.
+    /// @note It is impossible to close windows that don't have parent.
+    void close();
 
     /// Adds given window to children of this window.
     void addChild(std::unique_ptr<Window> child) {
@@ -35,8 +50,7 @@ public:
         childPtr->m_parent = this;
 
         // Make child position relative to parent.
-        // @todo Make it recursive.
-        //childPtr->getRect().move(-getRect().topLeft.asSize());
+        childPtr->getRect().move(-getScreenRect().topLeft.asSize());
     }
 
     /// Removes given window from children of this window.
@@ -50,9 +64,9 @@ public:
 
         auto childPtr = std::move(*position);
         childPtr->m_parent = nullptr;
-        // Make child position not relative to parent.
-        // @todo Make it recursive.
-        //childPtr->getRect().move(getRect().topLeft.asSize());
+
+        // Make child position absolute.
+        childPtr->getRect().move(getScreenRect().topLeft.asSize());
 
         m_children.erase(position);
 
@@ -82,6 +96,16 @@ public:
         m_rect = rect;
     }
 
+    /// Returns rectangle of this Window in screen coordinates.
+    Rect getScreenRect() const {
+        auto rect = m_rect;
+        if (m_parent) {
+            auto parentRect = m_parent->getScreenRect();
+            rect.topLeft += parentRect.topLeft.asSize();
+        }
+        return rect;
+    }
+
     /// Returns window under given point (in parent coordinates).
     /// If many windows are overlapping the point, one of them will be chosen, but children have precedence over parents.
     /// Returns nullopt if no window is under given point.
@@ -98,11 +122,11 @@ public:
         return this;
     }
 
-    void draw(ScreenCanvas& parentCanvas) const {
-        auto myCanvas = parentCanvas.getSubCanvas(getRect());
-        drawSelf(myCanvas);
+    void draw(ScreenCanvas& parentCanvas) {
+        auto windowCanvas = parentCanvas.getSubCanvas(getRect());
+        drawSelf(windowCanvas);
         for (auto& child : m_children) {
-            child->draw(myCanvas);
+            child->draw(windowCanvas);
         }
     }
 
@@ -127,28 +151,29 @@ public:
     }
 
 private:
-    /// screenCanvas has size of the window.
-    virtual void drawSelf(ScreenCanvas& screenCanvas) const = 0;
+    /// windowCanvas has origin in top left corner of this window.
+    virtual void drawSelf(ScreenCanvas& windowCanvas) = 0;
 
-    virtual bool preProcessAction(const std::string& action) { return false; }
-    virtual bool doProcessAction(const std::string& action) { return false; }
+protected:
+    virtual bool preProcessAction(const std::string& action) {
+        ZUNUSED(action);
+        return false;
+    }
+
+    virtual bool doProcessAction(const std::string& action);
 };
 
 /// BasicWindow draws itself as a rectangle, and can be moved and resized.
 class BasicWindow : public Window {
     bool m_doubleEdge;
-    Color m_fgColor;
-    Color m_bgColor;
-    Style m_style;
+    Attributes m_attributes;
 
     std::string m_message;
 public:
-    BasicWindow(const std::string& name, Rect rect, bool doubleEdge, Color fgColor, Color bgColor, Style style)
-        : Window(name, rect)
+    BasicWindow(WindowManager* windowManager, const std::string& name, Rect rect, bool doubleEdge, Attributes attributes)
+        : Window(windowManager, name, rect)
         , m_doubleEdge(doubleEdge)
-        , m_fgColor(fgColor)
-        , m_bgColor(bgColor)
-        , m_style(style)
+        , m_attributes(attributes)
     {}
 
     void setMessage(const std::string& message) {
@@ -156,9 +181,67 @@ public:
     }
 
 private:
-    void drawSelf(ScreenCanvas& screenCanvas) const override;
+    void drawSelf(ScreenCanvas& windowCanvas) override;
 
+protected:
     bool doProcessAction(const std::string& action) override;
 };
+
+class WindowManager {
+    std::unique_ptr<Window> m_rootWindow;
+    std::vector<Window*> m_debugWindows;
+    tl::optional<Window*> m_focusedWindow;
+public:
+    WindowManager()
+        : m_focusedWindow(nullptr)
+    {
+        m_rootWindow = std::make_unique<BasicWindow>(this, "Root Window", Rect(), true, Attributes { Color::Black, Color::White, Style::Normal });
+        setFocusedWindow(m_rootWindow.get());
+    }
+
+    ~WindowManager() {
+        m_rootWindow.reset();
+        ZHARDASSERT(m_debugWindows.empty()) << "This many windows were not destroyed yet: " << m_debugWindows.size();
+    }
+
+    Window* getRootWindow() {
+        return m_rootWindow.get();
+    }
+
+    tl::optional<Window*> getFocusedWindow() {
+        return m_focusedWindow;
+    }
+
+    void setFocusedWindow(Window* window) {
+        ZASSERT(window->getWindowManager() == this);
+
+        m_focusedWindow = window;
+    }
+
+private:
+    friend class Window;
+
+    void windowCreated(Window* window) {
+        ZASSERT(window->getWindowManager() == this);
+
+        m_debugWindows.push_back(window);
+    }
+
+    void windowDestroyed(Window* window) {
+        ZASSERT(window->getWindowManager() == this);
+
+        if (m_focusedWindow == window) {
+            m_focusedWindow = tl::nullopt;
+        }
+
+        auto position = std::find(m_debugWindows.begin(), m_debugWindows.end(), window);
+        ZASSERT(position != m_debugWindows.end()) << "Window not found in this manager.";
+
+        m_debugWindows.erase(position);
+    }
+};
+
+/// Opens a message box.
+Window* messageBox(Window* parent, const std::string& message);
 
 } // namespace terminal
