@@ -14,6 +14,11 @@ set(LIB_SOURCES
     
     screen_buffer.h
     screen_buffer.cpp
+
+    window.h
+    window.cpp
+
+    geometry.h
     )
 
 add_library(${LIB_NAME} ${LIB_SOURCES})

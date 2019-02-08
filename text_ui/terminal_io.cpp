@@ -21,6 +21,9 @@
 
 namespace terminal {
 
+int mouseX = 0;
+int mouseY = 0;
+
 tl::optional<std::string> getActionForEvent(const std::string& contextName, const Event& event, const terminal_editor::EditorConfig& editorConfig) {
     // Currently we support only keyboard shortcuts.
     if (event.common.type != Event::Type::KeyPressed)
@@ -48,8 +51,14 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
             if (binding.ctrl != keyEvent.ctrl)
                 continue;
 
-            if (binding.key != static_cast<std::string>(keyEvent.keys))
-                continue;
+            if (keyEvent.ctrl) {
+                if (binding.key != std::string() + ctrl_to_key(keyEvent.keys[0]))
+                    continue;
+            } else {
+                if (binding.key != static_cast<std::string>(keyEvent.keys))
+                    continue;
+            }
+            
 
             return binding.action;
         }
@@ -227,6 +236,9 @@ tl::optional<std::string> readConsole() {
 
             case MOUSE_EVENT: // mouse input 
                 //MouseEventProc(irInBuf[i].Event.MouseEvent); 
+                auto mevent = irInBuf[i].Event.MouseEvent;
+                mouseX = mevent.dwMousePosition.X;
+                mouseY = mevent.dwMousePosition.Y;
                 break; 
 
             case WINDOW_BUFFER_SIZE_EVENT: // scrn buf. resizing 

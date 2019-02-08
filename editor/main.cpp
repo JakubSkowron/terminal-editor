@@ -5,6 +5,7 @@
 #include "editor_config.h"
 #include "screen_buffer.h"
 #include "zlogging.h"
+#include "window.h"
 
 #include <chrono>
 #include <cstdio>
@@ -14,115 +15,14 @@
 #include <sstream>
 #include <thread>
 
+using namespace terminal;
+
 /* Using ANSI and xterm escape codes. It works in PuTTy, gnome-terminal,
    and other xterm-like terminals. Some codes will also work on real tty.
    Currenlty only supporting UTF-8 terminals. */
 
 static int stdin_fd = ::fileno(stdin);
 static int stdout_fd = ::fileno(stdout);
-
-void message_box(terminal::ScreenBuffer& screenBuffer, const std::string& message) {
-    auto fgColor = terminal::Color::Cyan;
-    auto bgColor = terminal::Color::Blue;
-    auto style = terminal::Style::Normal;
-
-    auto len = static_cast<int>(message.length());  // TODO: count UTF-8 characters
-    len = std::min(screenBuffer.getWidth() - 4, len);  // clamp length of message
-
-    int box_width = len + 4;
-    int x = screenBuffer.getWidth() / 2 - box_width / 2;
-    int y = screenBuffer.getHeight() / 2 - 2;  // TODO: checks for too small height
-
-    std::string horizontal_bar;
-    for (int i = 0; i < box_width - 2; ++i) horizontal_bar += "─";
-
-    std::string topBar = "┌" + horizontal_bar + "┐";
-    screenBuffer.print(x, y, topBar, fgColor, bgColor, style);
-
-    y += 1;
-    screenBuffer.print(x, y, "│ ", fgColor, bgColor, style);
-    screenBuffer.print(x + 2, y, message, terminal::Color::White, bgColor, terminal::Style::Bold);
-    screenBuffer.print(x + 2 + len, y, " │", fgColor, bgColor, style);
-
-    y += 1;
-    std::string bottomBar = "└" + horizontal_bar + "┘";
-    screenBuffer.print(x, y, bottomBar, fgColor, bgColor, style);
-}
-
-// This is a super ugly hack. I have no idea why this is necessary,
-#ifdef WIN32
-#define _u8(x) x
-#else
-#define _u8(x) u8 ## x
-#endif
-
-void draw_box(terminal::ScreenBuffer& screenBuffer) {
-    auto fgColor = terminal::Color::White;
-    auto bgColor = terminal::Color::Black;
-    auto style = terminal::Style::Normal;
-
-    // top line
-    screenBuffer.print(0, 0, _u8("┌"), fgColor, bgColor, style);
-    for (int x = 1; x < screenBuffer.getWidth() - 1; x += 1) {
-        if (x % 10 == 0) {
-            screenBuffer.print(x, 0, _u8("┬"), fgColor, bgColor, style);
-            continue;
-        }
-
-        screenBuffer.print(x, 0, _u8("─"), fgColor, bgColor, style);
-    }
-    screenBuffer.print(screenBuffer.getWidth() - 1, 0, _u8("┐"), fgColor, bgColor, style);
-
-    // two vertical lines at 1, and at width
-    for (int y = 1; y < screenBuffer.getHeight() - 1; y += 1) {
-        screenBuffer.print(0, y, y % 5 == 0 ? _u8("├") : _u8("│"), fgColor, bgColor, style);
-        screenBuffer.print(screenBuffer.getWidth() - 1, y, y % 5 == 0 ? _u8("┤") : _u8("│"), fgColor, bgColor, style);
-    }
-
-    // bottom line
-    screenBuffer.print(0, screenBuffer.getHeight() - 1, _u8("└"), fgColor, bgColor, style);
-    for (int x = 1; x < screenBuffer.getWidth() - 1; x += 1) {
-        if (x % 10 == 0) {
-            screenBuffer.print(x, screenBuffer.getHeight() - 1, _u8("┴"), fgColor, bgColor, style);
-            continue;
-        }
-
-        screenBuffer.print(x, screenBuffer.getHeight() - 1, _u8("─"), fgColor, bgColor, style);
-    }
-    screenBuffer.print(screenBuffer.getWidth() - 1, screenBuffer.getHeight() - 1, _u8("┘"), fgColor, bgColor, style);
-}
-
-void horizontal_lines(terminal::ScreenBuffer& screenBuffer) {
-    auto fgColor = terminal::Color::White;
-    auto bgColor = terminal::Color::Black;
-    auto style = terminal::Style::Normal;
-
-    for (int y = 5; y < screenBuffer.getHeight() - 1; y += 5) {
-        for (int x = 1; x < screenBuffer.getWidth() - 1; x += 1) {
-            if (x % 10 == 0) {
-                screenBuffer.print(x, y, _u8("┼"), fgColor, bgColor, style);
-                continue;
-            }
-
-            screenBuffer.print(x, y, _u8("─"), fgColor, bgColor, style);
-        }
-    }
-}
-
-void vertical_lines(terminal::ScreenBuffer& screenBuffer) {
-    auto fgColor = terminal::Color::White;
-    auto bgColor = terminal::Color::Black;
-    auto style = terminal::Style::Normal;
-
-    for (int y = 1; y < screenBuffer.getHeight() - 1; y += 1) {
-        if (y % 5 == 0) {
-            continue;
-        }
-        for (int x = 10; x < screenBuffer.getWidth() - 1; x += 10) {
-            screenBuffer.print(x, y, _u8("│"), fgColor, bgColor, style);
-        }
-    }
-}
 
 // TODO: make possible more than one listner at a time
 //      (currently is directly called in signal handler)
@@ -166,28 +66,42 @@ int main() {
       }
     };
 
-    auto redraw = [&screenBuffer, &line_buffer]() {
+    BasicWindow rootWindow("Root Window", Rect(), true, Color::White, Color::Blue, Style::Normal);
+
+    auto message_box = [&rootWindow](const std::string& message) {
+        auto rect = rootWindow.getRect();
+        rect.move(rect.size / 4);
+        rect.size /= 2;
+        auto boxWindow = std::make_unique<BasicWindow>("Message Box", rect, true, Color::White, Color::Green, Style::Normal);
+        boxWindow->setMessage(message);
+        auto wnd = boxWindow.get();
+        rootWindow.addChild(std::move(boxWindow));
+        return wnd;
+    };
+
+    auto mainBox = message_box("Press Ctrl-Q to exit.");
+
+    auto redraw = [&screenBuffer, &line_buffer, &rootWindow]() {
       screenBuffer.clear(terminal::Color::Bright_White);
-      draw_box(screenBuffer);
-      horizontal_lines(screenBuffer);
-      vertical_lines(screenBuffer);
+
+      auto canvas = screenBuffer.getCanvas();
+      rootWindow.draw(canvas);
 
       std::stringstream str;
       str << "Screen size " << screenBuffer.getWidth() << "x" << screenBuffer.getHeight();
-      screenBuffer.print(1, 1, str.str(), terminal::Color::White, terminal::Color::Black, terminal::Style::Normal);
+      canvas.print({1, 1}, str.str(), terminal::Color::White, terminal::Color::Black, terminal::Style::Normal);
 
       int line_number = 2;
       for (auto& line : line_buffer) {
-          screenBuffer.print(1, line_number, line, terminal::Color::White, terminal::Color::Black, terminal::Style::Normal);
+          canvas.print({1, line_number}, line, terminal::Color::White, terminal::Color::Black, terminal::Style::Normal);
           line_number++;
           if (line_number >= screenBuffer.getHeight())
               break;
       }
     };
 
-    std::string message = "Press Ctrl-Q to exit...";
-
     while (true) {
+      redraw();
       screenBuffer.present();
 
       // wait for input event
@@ -195,11 +109,25 @@ int main() {
 
       auto action = terminal::getActionForEvent("global", e, terminal_editor::getEditorConfig());
       if (action) {
-          redraw();
-          message_box(screenBuffer, *action);
-          screenBuffer.present();
+          if (rootWindow.processAction(*action))
+            continue;
+
+          if (*action == "box") {
+              message_box(*action);
+          }
+
+          if (*action == "kill-box") {
+              auto children = rootWindow.children();
+              if (children.size() > 1) {
+                  auto child = rootWindow.removeChild(children[1]);
+                  child.release();
+              }
+          }
 
           if (*action == "quit") {
+              message_box(*action);
+              redraw();
+              screenBuffer.present();
               std::this_thread::sleep_for(1s);
               return 0;
           }
@@ -209,8 +137,8 @@ int main() {
       switch (e.common.type) {
         case terminal::Event::Type::KeyPressed: {
           if (e.keypressed.ctrl == true && terminal::ctrl_to_key(e.keypressed.keys[0]) == 'Q') {
+            message_box("Good bye");
             redraw();
-            message_box(screenBuffer, "Good bye");
             screenBuffer.present();
             std::this_thread::sleep_for(1s);
             return 0;
@@ -225,21 +153,23 @@ int main() {
             key = e.keypressed.keys;
           }
 
-          message = key;
+          auto message = key;
           if (key.size() == 1) message += " (" + std::to_string(e.keypressed.keys[0]) + ")";
           push_line(message);
-          redraw();
-          message_box(screenBuffer, message + " Press Ctrl-Q to exit.");
           break;
         }
-        case terminal::Event::Type::WindowSize:
+        case terminal::Event::Type::WindowSize: {
           if ( (terminal_size::width != screenBuffer.getWidth()) || (terminal_size::height != screenBuffer.getHeight()) ) {
               screenBuffer.resize(terminal_size::width, terminal_size::height);
           }
+          rootWindow.setRect({ {0, 0}, Size{terminal_size::width, terminal_size::height} });
+          auto rect = rootWindow.getRect();
+          rect.move(rect.size / 4);
+          rect.size /= 2;
+          mainBox->setRect(rect);
+        }
+        break;
 
-          redraw();
-          message_box(screenBuffer, message);
-          break;
         case terminal::Event::Type::Esc: {
           std::string message = "Esc ";
           for (char* p = e.esc.bytes; *p != 0; ++p) {
@@ -249,12 +179,11 @@ int main() {
               message += *p;
           }
           push_line(message);
-          redraw();
           break;
         }
+
         default:  // TODO: handle other events
-          redraw();
-          message_box(screenBuffer, "Default");
+          message_box("Default");
       }
     }
 

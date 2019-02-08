@@ -21,6 +21,9 @@
 
 namespace terminal {
 
+extern int mouseX;
+extern int mouseY;
+
 /* Turns echo and canonical mode off, enter raw mode. */
 class TerminalRawMode {
  public:
