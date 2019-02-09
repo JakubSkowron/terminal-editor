@@ -96,7 +96,7 @@ const char* controlCharacterName(uint32_t codePoint) {
 CodePointInfo getFirstCodePoint(gsl::span<const char> data) {
     ZASSERT(!data.empty());
 
-    bool hasErrors = false;         ///< True if any errors were reported.
+    bool hasErrors = false;   ///< True if any errors were reported.
     std::stringstream errors; ///< Common errors for all bytes in a sequence.
 
     auto addError = [&hasErrors, &errors]() -> std::stringstream& {
@@ -110,7 +110,7 @@ CodePointInfo getFirstCodePoint(gsl::span<const char> data) {
         auto errorsStr = errors.str();
         if (!errorsStr.empty())
             errorsStr.erase(0, 1);
-        return { false, { data.data(), bytesConsumed }, errorsStr, 0 };
+        return {false, {data.data(), bytesConsumed}, errorsStr, 0};
     };
 
     auto firstByte = static_cast<uint8_t>(data[0]);
@@ -224,7 +224,7 @@ CodePointInfo getFirstCodePoint(gsl::span<const char> data) {
         return prepareErrorResult(bytesToConsume);
     }
 
-    return { true, data.subspan(0, bytesToConsume), u8"", codePoint };
+    return {true, data.subspan(0, bytesToConsume), u8"", codePoint};
 }
 
 std::vector<CodePointInfo> parseLine(gsl::span<const char> inputData) {

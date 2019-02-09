@@ -7,7 +7,6 @@
 
 using namespace terminal_editor;
 
-
 TEST_CASE("Loading files works", "[text-buffer]") {
     SECTION("empty.txt") {
         TextBuffer textBuffer;
