@@ -5,5 +5,4 @@ if [[ $# == 0 ]]; then
   exit 1
 fi
 
-clang-format --style="{BasedOnStyle: Google, ColumnLimit: 100}" -i "$@"
-
+clang-format --style=file -i "$@"
