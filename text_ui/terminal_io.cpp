@@ -26,10 +26,9 @@ int mouseY = 0;
 
 tl::optional<std::string> getActionForEvent(const std::string& contextName, const Event& event, const terminal_editor::EditorConfig& editorConfig) {
     // Currently we support only keyboard shortcuts.
-    if (event.common.type != Event::Type::KeyPressed)
+    const KeyPressed* keyEvent = std::get_if<KeyPressed>(&event);
+    if (keyEvent == nullptr)
         return tl::nullopt;
-
-    const Event::KeyPressed& keyEvent = event.keypressed;
 
     // Check if there is a key map for current context. Fallback to "global" if not found.
     const terminal_editor::KeyMap* keyMap = nullptr;
@@ -48,14 +47,14 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
             if (binding.mouseButton)
                 continue;
 
-            if (binding.ctrl != keyEvent.ctrl)
+            if (binding.ctrl != keyEvent->ctrl)
                 continue;
 
-            if (keyEvent.ctrl) {
-                if (binding.key != std::string() + ctrl_to_key(keyEvent.keys[0]))
+            if (keyEvent->ctrl) {
+                if (binding.key != std::string() + ctrl_to_key(keyEvent->keys[0]))
                     continue;
             } else {
-                if (binding.key != static_cast<std::string>(keyEvent.keys))
+                if (binding.key != static_cast<std::string>(keyEvent->keys))
                     continue;
             }
 
@@ -295,11 +294,9 @@ void InputThread::loop() {
         }
 
         if (txt[0] == 0x1b) {
-            Event e;
-            e.esc = Event::Esc{};
-            e.esc.type = Event::Type::Esc;
-            std::copy(txt.c_str(), txt.c_str() + txt.size() + 1, e.esc.bytes);
-            event_queue.push(e);
+            Esc esc;
+            esc.bytes = txt;
+            event_queue.push(esc);
             continue;
         }
 
@@ -311,23 +308,21 @@ void InputThread::loop() {
         }
 
         // consider it as ordinary keypressed
-        Event e;
-        e.keypressed = Event::KeyPressed{};
-        e.keypressed.ctrl = ctrl;
-        std::copy(txt.c_str(), txt.c_str() + txt.size() + 1, e.keypressed.keys);
-        event_queue.push(e);
+        KeyPressed keyEvent;
+        keyEvent.ctrl = ctrl;
+        keyEvent.keys = txt;
+        event_queue.push(keyEvent);
     }
 
     // Error
-    Event e;
-    e.error = {Event::Type::Error, nullptr};
+    Error error;
     if (std::feof(stdin)) {
-        e.error.msg = "stdin EOF";
+        error.msg = "stdin EOF";
     }
     if (std::ferror(stdin)) {
-        e.error.msg = "stdin ERROR";
+        error.msg = "stdin ERROR";
     }
-    event_queue.push(e);
+    event_queue.push(error);
 }
 
 InputThread::InputThread(EventQueue& event_queue)

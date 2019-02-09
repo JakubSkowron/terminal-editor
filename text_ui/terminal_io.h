@@ -11,6 +11,7 @@
 #include <queue>
 #include <thread>
 #include <string>
+#include <variant>
 #include <tl/optional.hpp>
 
 #ifndef WIN32
@@ -59,36 +60,25 @@ public:
     ~MouseTracking();
 };
 
-union Event {
-    enum class Type { KeyPressed, Esc, Error, WindowSize };
-
-    // common initial sequence for union
-    struct {
-        Type type;
-    } common;
-
-    struct KeyPressed {
-        Type type;     // = Type::KeyPressed;
-        char keys[20]; // null terminated UTF-8 sequence TODO: make it not fixed 20
-        bool ctrl;
-    } keypressed;
-
-    struct Esc {
-        Type type;      // = Type::Esc;
-        char bytes[20]; // null terminated escape sequence TODO: make it not fixed 20
-    } esc;
-
-    struct Error {
-        Type type;       // = Type::Error;
-        const char* msg; // TODO: is it possible to use std::string in union?
-    } error;
-
-    struct WindowSize {
-        Type type; // = Type::WindowSize;
-        int width;
-        int height;
-    } window_size;
+struct KeyPressed {
+    std::string keys;   ///< UTF-8 string. Will bever be empty.
+    bool ctrl;          ///< True if CTRL was held.
 };
+
+struct Esc {
+    std::string bytes;  ///< UTF-8 string, starting with 27 (\x1b). Will never be empty.
+};
+
+struct Error {
+    std::string msg;    ///< UTF-8 string.
+};
+
+struct WindowSize {
+    int width;
+    int height;
+};
+
+using Event = std::variant<KeyPressed, Esc, Error, WindowSize>;
 
 /// Returns action that is bound to given Event.
 /// @param contextName      Name of the key map to use.

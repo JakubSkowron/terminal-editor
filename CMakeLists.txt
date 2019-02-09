@@ -108,8 +108,8 @@ function(SetCompilerOptions targetName)
     endif()
     target_compile_options(${targetName} PRIVATE ${optionsList})
 
-    # As this is a public compile feature anything that links to target will also build with -std=c++14
-    target_compile_features(${targetName} PUBLIC cxx_std_14)
+    # As this is a public compile feature anything that links to target will also build with -std=c++17
+    target_compile_features(${targetName} PUBLIC cxx_std_17)
 
     if(MSVC)
         # Get rid of annoying compiler warnings.

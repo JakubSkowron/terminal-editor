@@ -51,11 +51,10 @@ int main() {
         EventQueue event_queue;
         InputThread input_thread{event_queue};
         OnScreenResize listener{[&](int w, int h) {
-            Event e;
-            e.window_size = {Event::Type::WindowSize, w, h};
+            WindowSize windowSize { w, h };
             // TODO: avoid locking mutex in signal handler.
             // Use flag & condition variable notify.
-            event_queue.push(e);
+            event_queue.push(windowSize);
         }};
 
         std::deque<std::string> line_buffer;
@@ -127,56 +126,53 @@ int main() {
                 continue;
             }
 
-            switch (e.common.type) {
-                case Event::Type::KeyPressed: {
-                    if (e.keypressed.ctrl == true && ctrl_to_key(e.keypressed.keys[0]) == 'Q') {
-                        messageBox(rootWindow, "Good bye");
-                        redraw();
-                        screenBuffer.present();
-                        std::this_thread::sleep_for(1s);
-                        return 0;
-                    }
-
-                    std::string key;
-                    // Ctrl
-                    if (e.keypressed.ctrl) {
-                        key = "Ctrl-";
-                        key += ctrl_to_key(e.keypressed.keys[0]);
-                    } else {
-                        key = e.keypressed.keys;
-                    }
-
-                    auto message = key;
-                    if (key.size() == 1)
-                        message += " (" + std::to_string(e.keypressed.keys[0]) + ")";
-                    push_line(message);
-                    break;
-                }
-                case Event::Type::WindowSize: {
-                    if ((terminal_size::width != screenBuffer.getWidth()) || (terminal_size::height != screenBuffer.getHeight())) {
-                        screenBuffer.resize(terminal_size::width, terminal_size::height);
-                    }
-                    rootWindow->setRect({{0, 0}, Size{terminal_size::width, terminal_size::height}});
-                    auto rect = rootWindow->getRect();
-                    rect.move(rect.size / 4);
-                    rect.size /= 2;
-                    mainBox->setRect(rect);
-                } break;
-
-                case Event::Type::Esc: {
-                    std::string message = "Esc ";
-                    for (char* p = e.esc.bytes; *p != 0; ++p) {
-                        if (*p < 32)
-                            message += "\\" + std::to_string(*p);
-                        else
-                            message += *p;
-                    }
-                    push_line(message);
-                    break;
+            if (auto keyEvent = std::get_if<KeyPressed>(&e)) {
+                if (keyEvent->ctrl == true && ctrl_to_key(keyEvent->keys[0]) == 'Q') {
+                    messageBox(rootWindow, "Good bye");
+                    redraw();
+                    screenBuffer.present();
+                    std::this_thread::sleep_for(1s);
+                    return 0;
                 }
 
-                default: // TODO: handle other events
-                    messageBox(rootWindow, "Default");
+                std::string key;
+                // Ctrl
+                if (keyEvent->ctrl) {
+                    key = "Ctrl-";
+                    key += ctrl_to_key(keyEvent->keys[0]);
+                } else {
+                    key = keyEvent->keys;
+                }
+
+                auto message = key;
+                if (key.size() == 1)
+                    message += " (" + std::to_string(keyEvent->keys[0]) + ")";
+                push_line(message);
+            }
+            else
+            if (auto windowSize = std::get_if<WindowSize>(&e)) {
+                if ((windowSize->width != screenBuffer.getWidth()) || (windowSize->height != screenBuffer.getHeight())) {
+                    screenBuffer.resize(windowSize->width, windowSize->height);
+                }
+                rootWindow->setRect({{0, 0}, Size{windowSize->width, windowSize->height}});
+                auto rect = rootWindow->getRect();
+                rect.move(rect.size / 4);
+                rect.size /= 2;
+                mainBox->setRect(rect);
+            }
+            else
+            if (auto esc = std::get_if<Esc>(&e)) {
+                std::string message = "Esc ";
+                for (char c : esc->bytes) {
+                    if (c < 32)
+                        message += "\\" + std::to_string(c);
+                    else
+                        message += c;
+                }
+                push_line(message);
+            }
+            else {
+                messageBox(rootWindow, "Default");
             }
         }
     }
