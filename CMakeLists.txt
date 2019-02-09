@@ -41,6 +41,9 @@ endif()
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
     set(USING_CLANG ON)
     message(STATUS "Compiling using Clang.")
+    set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -stdlib=libc++")
+    set(CMAKE_LINKER_FLAGS_RELEASE "${CMAKE_LINKER_FLAGS_RELWITHDEBINFO} -stdlib=libc++")
+    set(CMAKE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_LINKER_FLAGS_RELWITHDEBINFO} -stdlib=libc++")
 else()
     set(USING_CLANG OFF)
 endif()
@@ -100,9 +103,8 @@ function(SetCompilerOptions targetName)
                 -Wno-sign-conversion        # don't warn on sign conversions (this is very noisy)
 
                 -stdlib=libc++              # Otherwise <variant> header is not being found. Also libc++ package needs to be installed on Ubuntu.
-                -Wl,-stdlib=libc++          # target_link_options is available since CMake 3.14 I think.
             )
-            #target_link_options(${targetName} PRIVATE -stdlib=libc++)
+            #target_link_options(${targetName} PRIVATE -stdlib=libc++)  # target_link_options is available since CMake 3.14 I think.
             target_link_libraries(${targetName} PRIVATE c++abi)
             target_link_libraries(${targetName} PRIVATE atomic)
         else()
