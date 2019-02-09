@@ -98,6 +98,8 @@ function(SetCompilerOptions targetName)
             list(APPEND optionsList
                 #-Wlifetime                  # (clang only) shows object lifetime issues
                 -Wno-sign-conversion        # don't warn on sign conversions (this is very noisy)
+
+                -std=libc++                 # Otherwise <variant> header is not being found. Also libc++ package needs to be installed on Ubuntu.
             )
         else()
             list(APPEND optionsList

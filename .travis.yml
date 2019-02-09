@@ -20,6 +20,10 @@ matrix:
       env:
         - COMPILER=g++-7
     - compiler: clang
+      addons:
+        apt:
+          packages:
+            - libc++
 
       env:
         - COMPILER=clang++
