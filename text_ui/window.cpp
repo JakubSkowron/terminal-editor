@@ -44,10 +44,10 @@ bool Window::doProcessAction(const std::string& action) {
 void BasicWindow::drawSelf(ScreenCanvas& windowCanvas) {
     auto localRect = Rect{Point{0, 0}, getRect().size};
     auto attributes = m_attributes;
-    if (getWindowManager()->getFocusedWindow() != this) {
-        attributes.fgColor = Color::Bright_White;
+    if (getWindowManager()->getFocusedWindow() == this) {
+        attributes.fgColor = Color::Bright_Red;
     }
-    windowCanvas.rect(localRect, m_doubleEdge, true, m_attributes);
+    windowCanvas.rect(localRect, m_doubleEdge, true, attributes);
 
     auto messageLength = terminal_editor::getRenderedWidth(m_message);
 
