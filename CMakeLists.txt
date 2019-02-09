@@ -30,8 +30,8 @@ else()
         set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=undefined")
         set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=undefined")
 
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fsanitize=undefined -fsanitize-minimal-runtime")
-        set(CMAKE_LINKER_FLAGS_RELEASE "${CMAKE_LINKER_FLAGS_RELWITHDEBINFO} -fsanitize=undefined -fsanitize-minimal-runtime")
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fsanitize=undefined -fsanitize-minimal-runtime")
+        set(CMAKE_LINKER_FLAGS_RELEASE "${CMAKE_LINKER_FLAGS_RELEASE} -fsanitize=undefined -fsanitize-minimal-runtime")
 
         set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fsanitize=undefined -fsanitize-minimal-runtime")
         set(CMAKE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_LINKER_FLAGS_RELWITHDEBINFO} -fsanitize=undefined -fsanitize-minimal-runtime")
@@ -41,6 +41,7 @@ endif()
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
     set(USING_CLANG ON)
     message(STATUS "Compiling using Clang.")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++")
 else()
     set(USING_CLANG OFF)
 endif()
@@ -98,7 +99,12 @@ function(SetCompilerOptions targetName)
             list(APPEND optionsList
                 #-Wlifetime                  # (clang only) shows object lifetime issues
                 -Wno-sign-conversion        # don't warn on sign conversions (this is very noisy)
+
+                -stdlib=libc++              # Otherwise <variant> header is not being found. Also libc++ package needs to be installed on Ubuntu.
             )
+            #target_link_options(${targetName} PRIVATE -stdlib=libc++)  # target_link_options is available since CMake 3.14 I think.
+            target_link_libraries(${targetName} PRIVATE c++abi)
+            target_link_libraries(${targetName} PRIVATE atomic)
         else()
             list(APPEND optionsList
                 -Wlogical-op                # (gcc only) warn about logical operations being used where bitwise were probably wanted
