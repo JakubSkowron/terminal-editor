@@ -20,6 +20,14 @@ matrix:
       env:
         - COMPILER=g++-7
     - compiler: clang
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-xenial-7
+          packages:
+            - libc++-7-dev
+            - libc++abi-7-dev
 
       env:
         - COMPILER=clang++

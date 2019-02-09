@@ -94,85 +94,90 @@ int main() {
             redraw();
             screenBuffer.present();
 
-            // wait for input event
-            auto e = *event_queue.poll(true);
+            while (true) {
+                // Process all events from the queue.
+                auto event = event_queue.poll(false);
+                if (!event)
+                    break;
 
-            auto action = getActionForEvent("global", e, terminal_editor::getEditorConfig());
-            if (action) {
-                auto focusedWindow = windowManager.getFocusedWindow();
-                auto activeWindow = focusedWindow.value_or(rootWindow);
-                if (activeWindow->processAction(*action))
-                    continue;
+                auto e = *event;
 
-                if (*action == "box") {
-                    messageBox(activeWindow, *action);
-                }
+                auto action = getActionForEvent("global", e, terminal_editor::getEditorConfig());
+                if (action) {
+                    auto focusedWindow = windowManager.getFocusedWindow();
+                    auto activeWindow = focusedWindow.value_or(rootWindow);
+                    if (activeWindow->processAction(*action))
+                        continue;
 
-                if (*action == "kill-box") {
-                    auto children = rootWindow->children();
-                    if (children.size() > 1) {
-                        auto child = rootWindow->removeChild(children[1]);
-                        child.release();
+                    if (*action == "box") {
+                        messageBox(activeWindow, *action);
+                    }
+
+                    if (*action == "kill-box") {
+                        auto children = rootWindow->children();
+                        if (children.size() > 1) {
+                            auto child = rootWindow->removeChild(children[1]);
+                            child.release();
+                        }
+                    }
+
+                    if (*action == "quit") {
+                        messageBox(activeWindow, *action);
+                        redraw();
+                        screenBuffer.present();
+                        std::this_thread::sleep_for(1s);
+                        return 0;
                     }
                 }
+                else
+                if (auto keyEvent = std::get_if<KeyPressed>(&e)) {
+                    if (keyEvent->ctrl == true && ctrl_to_key(keyEvent->keys[0]) == 'Q') {
+                        messageBox(rootWindow, "Good bye");
+                        redraw();
+                        screenBuffer.present();
+                        std::this_thread::sleep_for(1s);
+                        return 0;
+                    }
 
-                if (*action == "quit") {
-                    messageBox(activeWindow, *action);
-                    redraw();
-                    screenBuffer.present();
-                    std::this_thread::sleep_for(1s);
-                    return 0;
-                }
-                continue;
-            }
+                    std::string key;
+                    // Ctrl
+                    if (keyEvent->ctrl) {
+                        key = "Ctrl-";
+                        key += ctrl_to_key(keyEvent->keys[0]);
+                    } else {
+                        key = keyEvent->keys;
+                    }
 
-            if (auto keyEvent = std::get_if<KeyPressed>(&e)) {
-                if (keyEvent->ctrl == true && ctrl_to_key(keyEvent->keys[0]) == 'Q') {
-                    messageBox(rootWindow, "Good bye");
-                    redraw();
-                    screenBuffer.present();
-                    std::this_thread::sleep_for(1s);
-                    return 0;
+                    auto message = key;
+                    if (key.size() == 1)
+                        message += " (" + std::to_string(keyEvent->keys[0]) + ")";
+                    push_line(message);
                 }
-
-                std::string key;
-                // Ctrl
-                if (keyEvent->ctrl) {
-                    key = "Ctrl-";
-                    key += ctrl_to_key(keyEvent->keys[0]);
-                } else {
-                    key = keyEvent->keys;
+                else
+                if (auto windowSize = std::get_if<WindowSize>(&e)) {
+                    if ((windowSize->width != screenBuffer.getWidth()) || (windowSize->height != screenBuffer.getHeight())) {
+                        screenBuffer.resize(windowSize->width, windowSize->height);
+                    }
+                    rootWindow->setRect({{0, 0}, Size{windowSize->width, windowSize->height}});
+                    auto rect = rootWindow->getRect();
+                    rect.move(rect.size / 4);
+                    rect.size /= 2;
+                    mainBox->setRect(rect);
                 }
-
-                auto message = key;
-                if (key.size() == 1)
-                    message += " (" + std::to_string(keyEvent->keys[0]) + ")";
-                push_line(message);
-            }
-            else
-            if (auto windowSize = std::get_if<WindowSize>(&e)) {
-                if ((windowSize->width != screenBuffer.getWidth()) || (windowSize->height != screenBuffer.getHeight())) {
-                    screenBuffer.resize(windowSize->width, windowSize->height);
+                else
+                if (auto esc = std::get_if<Esc>(&e)) {
+                    std::string message = "Esc ";
+                    for (char c : esc->bytes) {
+                        if (c < 32)
+                            message += "\\" + std::to_string(c);
+                        else
+                            message += c;
+                    }
+                    push_line(message);
                 }
-                rootWindow->setRect({{0, 0}, Size{windowSize->width, windowSize->height}});
-                auto rect = rootWindow->getRect();
-                rect.move(rect.size / 4);
-                rect.size /= 2;
-                mainBox->setRect(rect);
-            }
-            else
-            if (auto esc = std::get_if<Esc>(&e)) {
-                std::string message = "Esc ";
-                for (char c : esc->bytes) {
-                    if (c < 32)
-                        message += "\\" + std::to_string(c);
-                    else
-                        message += c;
+                else {
+                    messageBox(rootWindow, "Default");
                 }
-                push_line(message);
-            }
-            else {
-                messageBox(rootWindow, "Default");
             }
         }
     }
