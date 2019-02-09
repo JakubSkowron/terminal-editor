@@ -99,8 +99,10 @@ function(SetCompilerOptions targetName)
                 #-Wlifetime                  # (clang only) shows object lifetime issues
                 -Wno-sign-conversion        # don't warn on sign conversions (this is very noisy)
 
-                -std=libc++                 # Otherwise <variant> header is not being found. Also libc++ package needs to be installed on Ubuntu.
+                -stdlib=libc++              # Otherwise <variant> header is not being found. Also libc++ package needs to be installed on Ubuntu.
             )
+            target_link_libraries(${targetName} PRIVATE c++abi)
+            target_link_libraries(${targetName} PRIVATE atomic)
         else()
             list(APPEND optionsList
                 -Wlogical-op                # (gcc only) warn about logical operations being used where bitwise were probably wanted

@@ -22,8 +22,12 @@ matrix:
     - compiler: clang
       addons:
         apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-xenial-7
           packages:
-            - libc++
+            - libc++-7-dev
+            - libc++abi-7-dev
 
       env:
         - COMPILER=clang++
