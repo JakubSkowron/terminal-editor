@@ -20,6 +20,6 @@ void shutdown();
 /// Fires window resize handler with current windows size.
 void fire_screen_resize_event();
 
-}  // namespace terminal_size
+} // namespace terminal_size
 
-#endif  // TERMINAL_SIZE_H
+#endif // TERMINAL_SIZE_H

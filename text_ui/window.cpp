@@ -42,7 +42,7 @@ bool Window::doProcessAction(const std::string& action) {
 }
 
 void BasicWindow::drawSelf(ScreenCanvas& windowCanvas) {
-    auto localRect = Rect{ Point{0, 0}, getRect().size };
+    auto localRect = Rect{Point{0, 0}, getRect().size};
     auto attributes = m_attributes;
     if (getWindowManager()->getFocusedWindow() != this) {
         attributes.fgColor = Color::Bright_White;
@@ -53,28 +53,28 @@ void BasicWindow::drawSelf(ScreenCanvas& windowCanvas) {
 
     auto point = localRect.center();
     point.x = (localRect.size.width - messageLength) / 2 - 1;
-    auto textCanvas = windowCanvas.getSubCanvas({ {1, 0}, Size{localRect.size.width - 2, localRect.size.height} });
+    auto textCanvas = windowCanvas.getSubCanvas({{1, 0}, Size{localRect.size.width - 2, localRect.size.height}});
     textCanvas.print(point, m_message, m_attributes, m_attributes, m_attributes);
 }
 
 bool BasicWindow::doProcessAction(const std::string& action) {
     if (action == "left") {
-        getRect().move({ -1, 0 });
+        getRect().move({-1, 0});
         return true;
     }
 
     if (action == "right") {
-        getRect().move({ 1, 0 });
+        getRect().move({1, 0});
         return true;
     }
 
     if (action == "up") {
-        getRect().move({ 0, -1 });
+        getRect().move({0, -1});
         return true;
     }
 
     if (action == "down") {
-        getRect().move({ 0, 1 });
+        getRect().move({0, 1});
         return true;
     }
 
@@ -112,7 +112,7 @@ Window* messageBox(Window* parent, const std::string& message) {
     rect.move(Size{relX, relY});
     rect.size = Size{width, height};
 
-    auto boxWindow = std::make_unique<BasicWindow>(parent->getWindowManager(), "Message Box", rect, true, Attributes { Color::White, Color::Green, Style::Normal });
+    auto boxWindow = std::make_unique<BasicWindow>(parent->getWindowManager(), "Message Box", rect, true, Attributes{Color::White, Color::Green, Style::Normal});
     boxWindow->setMessage(message);
 
     auto wnd = boxWindow.get();

@@ -15,7 +15,7 @@
 #include "terminal_size.h"
 #include <clocale>
 #else
-#include <termios.h>  // for tcsetattr
+#include <termios.h> // for tcsetattr
 #include <unistd.h>
 #endif
 
@@ -58,7 +58,6 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
                 if (binding.key != static_cast<std::string>(keyEvent.keys))
                     continue;
             }
-            
 
             return binding.action;
         }
@@ -106,7 +105,7 @@ TerminalRawMode::TerminalRawMode() {
 
 #else
 
-    std::setlocale(LC_ALL, "en_US.UTF8");   // @todo Is ths necessary?
+    std::setlocale(LC_ALL, "en_US.UTF8"); // @todo Is ths necessary?
     //_setmode(_fileno(stdout), _O_U8TEXT); // @note This breaks stuff.
 
     if (!SetConsoleOutputCP(CP_UTF8))
@@ -157,75 +156,77 @@ TerminalRawMode::~TerminalRawMode() {
 }
 
 static void fputs_ex(const char* s, std::FILE* stream, const char* err_msg) {
-  int ret = std::fputs(s, stream);  // DEC Private Mode Set (DECSET)
-  if (ret == EOF) throw std::system_error(errno, std::generic_category(), err_msg);
+    int ret = std::fputs(s, stream); // DEC Private Mode Set (DECSET)
+    if (ret == EOF)
+        throw std::system_error(errno, std::generic_category(), err_msg);
 }
 
 MouseTracking::MouseTracking() {
-  // Enable SGR Mouse Mode
-  // Use Cell Motion Mouse Tracking
-  fputs_ex("\x1B[?1006h\x1B[?1002h", stdout, __func__);
+    // Enable SGR Mouse Mode
+    // Use Cell Motion Mouse Tracking
+    fputs_ex("\x1B[?1006h\x1B[?1002h", stdout, __func__);
 }
 
 MouseTracking::~MouseTracking() {
-  try {
-    // Don't use Cell Motion Mouse Tracking
-    // Disable SGR Mouse Mode
-    fputs_ex("\x1B[?1002l\x1B[?1006l", stdout, __func__);
-  } catch (std::exception& e) {
-    std::fputs(e.what(), stderr);
-    std::fputs("\n", stderr);
-  }
+    try {
+        // Don't use Cell Motion Mouse Tracking
+        // Disable SGR Mouse Mode
+        fputs_ex("\x1B[?1002l\x1B[?1006l", stdout, __func__);
+    }
+    catch (std::exception& e) {
+        std::fputs(e.what(), stderr);
+        std::fputs("\n", stderr);
+    }
 }
 
-char ctrl_to_key(unsigned char code) { return code | 0x40; }
+char ctrl_to_key(unsigned char code) {
+    return code | 0x40;
+}
 
 void EventQueue::push(Event e) {
-  {
-    std::unique_lock<std::mutex> lock{mutex};
-    queue.push(std::move(e));
-  }
-  cv.notify_one();
+    {
+        std::unique_lock<std::mutex> lock{mutex};
+        queue.push(std::move(e));
+    }
+    cv.notify_one();
 }
 
 tl::optional<Event> EventQueue::poll(bool block) {
-  std::unique_lock<std::mutex> lock{mutex};
-  if (!block && queue.empty()) {
-    return tl::nullopt;
-  }
-  while (queue.empty()) {
-    cv.wait(lock);
-  }
-  Event e = queue.front();
-  queue.pop();
-  return e;
+    std::unique_lock<std::mutex> lock{mutex};
+    if (!block && queue.empty()) {
+        return tl::nullopt;
+    }
+    while (queue.empty()) {
+        cv.wait(lock);
+    }
+    Event e = queue.front();
+    queue.pop();
+    return e;
 }
 
 #ifdef WIN32
 tl::optional<std::string> readConsole() {
-    static HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE); 
+    static HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
     if (hStdin == INVALID_HANDLE_VALUE)
         ZHARDASSERT(false) << "Could not get console input handle: " << GetLastError();
 
-    DWORD cNumRead; 
-    INPUT_RECORD irInBuf[128]; 
+    DWORD cNumRead;
+    INPUT_RECORD irInBuf[128];
 
-    if (!ReadConsoleInput(
-        hStdin,      // input buffer handle 
-        irInBuf,     // buffer to read into 
-        128,         // size of read buffer 
-        &cNumRead)) // number of records read 
+    if (!ReadConsoleInput(hStdin,     // input buffer handle
+                          irInBuf,    // buffer to read into
+                          128,        // size of read buffer
+                          &cNumRead)) // number of records read
     {
         ZHARDASSERT(false) << "Could not read input from console: " << GetLastError();
     }
 
     std::string txt;
-    bool ctrl = false;  // @todo This is not used now. Should it be?
+    bool ctrl = false; // @todo This is not used now. Should it be?
 
     for (int i = 0; i < static_cast<int>(cNumRead); ++i) {
-        switch(irInBuf[i].EventType) 
-        { 
-            case KEY_EVENT: // keyboard input 
+        switch (irInBuf[i].EventType) {
+            case KEY_EVENT: // keyboard input
                 auto kevent = irInBuf[i].Event.KeyEvent;
                 if (kevent.bKeyDown) {
                     static char szBuf[1024];
@@ -235,27 +236,27 @@ tl::optional<std::string> readConsole() {
                     ctrl |= localCtrl;
                     txt += std::string(szBuf, szBuf + count);
                 }
-                break; 
+                break;
 
-            case MOUSE_EVENT: // mouse input 
-                //MouseEventProc(irInBuf[i].Event.MouseEvent); 
+            case MOUSE_EVENT: // mouse input
+                // MouseEventProc(irInBuf[i].Event.MouseEvent);
                 auto mevent = irInBuf[i].Event.MouseEvent;
                 mouseX = mevent.dwMousePosition.X;
                 mouseY = mevent.dwMousePosition.Y;
-                break; 
+                break;
 
-            case WINDOW_BUFFER_SIZE_EVENT: // scrn buf. resizing 
-                //ResizeEventProc( irInBuf[i].Event.WindowBufferSizeEvent ); 
+            case WINDOW_BUFFER_SIZE_EVENT: // scrn buf. resizing
+                // ResizeEventProc( irInBuf[i].Event.WindowBufferSizeEvent );
                 auto wevent = irInBuf[i].Event.WindowBufferSizeEvent;
                 terminal_size::width = wevent.dwSize.X;
                 terminal_size::height = wevent.dwSize.Y;
                 terminal_size::fire_screen_resize_event();
-                break; 
+                break;
 
-            case FOCUS_EVENT:  // disregard focus events 
+            case FOCUS_EVENT: // disregard focus events
 
-            case MENU_EVENT:   // disregard menu events 
-                break; 
+            case MENU_EVENT: // disregard menu events
+                break;
 
             default: 
                 ZHARDASSERT(false) << "Unknown event type"; 
@@ -279,64 +280,65 @@ tl::optional<std::string> readConsole() {
 
 // TODO: consider non-blocking IO (or poll/select) and a joinable thread
 void InputThread::loop() {
-  while (true) {
-    auto txtopt = readConsole();
-    if (!txtopt)
-        break; // Error.
+    while (true) {
+        auto txtopt = readConsole();
+        if (!txtopt)
+            break; // Error.
 
-    if (break_loop)
-        return;
+        if (break_loop)
+            return;
 
-    const auto& txt = *txtopt;
+        const auto& txt = *txtopt;
 
-    if (txt.empty()) {
-        continue;
-    }
+        if (txt.empty()) {
+            continue;
+        }
 
-    if (txt[0] == 0x1b) {
+        if (txt[0] == 0x1b) {
+            Event e;
+            e.esc = Event::Esc{};
+            e.esc.type = Event::Type::Esc;
+            std::copy(txt.c_str(), txt.c_str() + txt.size() + 1, e.esc.bytes);
+            event_queue.push(e);
+            continue;
+        }
+
+        bool ctrl = false;
+        if (txt.size() == 1 && (txt[0] & 0xE0) == 0) {
+            // Ctrl key strips high 3 bits from character on input
+            // Use key | 0x40 to get 'A' from 1
+            ctrl = true;
+        }
+
+        // consider it as ordinary keypressed
         Event e;
-        e.esc = Event::Esc{};
-        e.esc.type = Event::Type::Esc;
-        std::copy(txt.c_str(), txt.c_str() + txt.size() + 1, e.esc.bytes);
+        e.keypressed = Event::KeyPressed{};
+        e.keypressed.ctrl = ctrl;
+        std::copy(txt.c_str(), txt.c_str() + txt.size() + 1, e.keypressed.keys);
         event_queue.push(e);
-        continue;
     }
 
-    bool ctrl = false;
-    if (txt.size() == 1 && (txt[0] & 0xE0) == 0) {
-        // Ctrl key strips high 3 bits from character on input
-        // Use key | 0x40 to get 'A' from 1
-        ctrl = true;
-    }
-
-    // consider it as ordinary keypressed
+    // Error
     Event e;
-    e.keypressed = Event::KeyPressed{};
-    e.keypressed.ctrl = ctrl;
-    std::copy(txt.c_str(), txt.c_str() + txt.size() + 1, e.keypressed.keys);
+    e.error = {Event::Type::Error, nullptr};
+    if (std::feof(stdin)) {
+        e.error.msg = "stdin EOF";
+    }
+    if (std::ferror(stdin)) {
+        e.error.msg = "stdin ERROR";
+    }
     event_queue.push(e);
-  }
-
-  // Error
-  Event e;
-  e.error = {Event::Type::Error, nullptr};
-  if (std::feof(stdin)) {
-    e.error.msg = "stdin EOF";
-  }
-  if (std::ferror(stdin)) {
-    e.error.msg = "stdin ERROR";
-  }
-  event_queue.push(e);
 }
 
 InputThread::InputThread(EventQueue& event_queue)
-    : event_queue(event_queue), thread(&InputThread::loop, this) {
-    thread.detach();    // join in destructor would block until there is some input from console. @todo Solve it.
+    : event_queue(event_queue)
+    , thread(&InputThread::loop, this) {
+    thread.detach(); // join in destructor would block until there is some input from console. @todo Solve it.
 }
 
 InputThread::~InputThread() {
     break_loop = true;
-    //thread.join();
+    // thread.join();
 }
 
-}  // namespace terminal
+} // namespace terminal

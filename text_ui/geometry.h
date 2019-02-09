@@ -20,11 +20,11 @@ struct Size {
     }
 
     Size operator-() const {
-        return { -width, -height };
+        return {-width, -height};
     }
 
     Size operator+(Size size) const {
-        return { width + size.width, height + size.height };
+        return {width + size.width, height + size.height};
     }
 
     Size operator-(Size size) const {
@@ -32,11 +32,11 @@ struct Size {
     }
 
     Size operator*(int factor) const {
-        return { width * factor, height * factor };
+        return {width * factor, height * factor};
     }
 
     Size operator/(int factor) const {
-        return { width / factor, height / factor };
+        return {width / factor, height / factor};
     }
 
     Size& operator+=(Size size) {
@@ -69,7 +69,7 @@ struct Point {
     Point& operator=(const Point&) = default;
 
     Size asSize() const {
-        return { x, y };
+        return {x, y};
     }
 
     bool operator==(Point other) const {
@@ -81,11 +81,11 @@ struct Point {
     }
 
     Size operator-(Point other) const {
-        return { x - other.x, y - other.y };
+        return {x - other.x, y - other.y};
     }
 
     Point operator+(Size size) const {
-        return { x + size.width, y + size.height };
+        return {x + size.width, y + size.height};
     }
 
     Point operator-(Size size) const {

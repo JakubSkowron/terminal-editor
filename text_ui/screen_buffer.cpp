@@ -13,9 +13,9 @@ namespace terminal {
 
 void ScreenBuffer::resize(int w, int h) {
     size.width = w;
-    size.height= h;
+    size.height = h;
 
-    Character emptyCharacter { " ", 1, Color::Yellow, Color::Red, Style::Normal };
+    Character emptyCharacter{" ", 1, Color::Yellow, Color::Red, Style::Normal};
 
     characters.resize(0);
     previousCharacters.resize(0);
@@ -26,7 +26,7 @@ void ScreenBuffer::resize(int w, int h) {
 }
 
 void ScreenBuffer::clear(Color bgColor) {
-    Character emptyCharacter { " ", 1, Color::Yellow, bgColor, Style::Normal };
+    Character emptyCharacter{" ", 1, Color::Yellow, bgColor, Style::Normal};
 
     characters.resize(0);
     characters.resize(size.width * size.height, emptyCharacter);
@@ -44,8 +44,8 @@ void ScreenBuffer::print(int x, int y, const std::string& text, Attributes attri
     for (const auto& grapheme : graphemes) {
         ZASSERT(curX + grapheme.width <= size.width);
 
-        Character character { grapheme.rendered, grapheme.width, attributes };
-        Character emptyCharacter { "", 0, attributes };
+        Character character{grapheme.rendered, grapheme.width, attributes};
+        Character emptyCharacter{"", 0, attributes};
 
         // Find end of graphemes that are being overwritten.
         int endX = curX;
@@ -62,7 +62,7 @@ void ScreenBuffer::print(int x, int y, const std::string& text, Attributes attri
         curX += grapheme.width;
 
         // Fill vacum left by overwriting existing graphemes.
-        Character vacumCharacter { " ", 1, Color::Cyan, Color::Yellow, Style::Normal };
+        Character vacumCharacter{" ", 1, Color::Cyan, Color::Yellow, Style::Normal};
         for (int i = curX; i < endX; ++i) {
             characters[y * size.width + i] = vacumCharacter;
         }
@@ -78,7 +78,7 @@ int setStyle(std::ostream& os, int currentStyleHash, Attributes attributes) {
     if (styleHash == currentStyleHash)
         return styleHash;
 
-    //fprintf(stdout, "\x1B[%d;%d;%dm", fgColorCode, bgColorCode, styleCode);
+    // fprintf(stdout, "\x1B[%d;%d;%dm", fgColorCode, bgColorCode, styleCode);
     os << "\x1B[" << fgColorCode << ";" << bgColorCode << ";" << styleCode << "m";
 
     return styleHash;
@@ -87,41 +87,41 @@ int setStyle(std::ostream& os, int currentStyleHash, Attributes attributes) {
 #define USE_WIN32_CONSOLE 0
 #if USE_WIN32_CONSOLE
 std::unordered_map<Color, WORD> fgColors = {
-    { Color::Black          , 0 },
-    { Color::Red	        , FOREGROUND_RED },
-    { Color::Green	        , FOREGROUND_GREEN },
-    { Color::Yellow	        , FOREGROUND_RED | FOREGROUND_GREEN },
-    { Color::Blue	        , FOREGROUND_BLUE },
-    { Color::Magenta	    , FOREGROUND_RED | FOREGROUND_BLUE },
-    { Color::Cyan	        , FOREGROUND_GREEN | FOREGROUND_BLUE },
-    { Color::White	        , FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE },
-    { Color::Bright_Black	, FOREGROUND_INTENSITY },
-    { Color::Bright_Red	    , FOREGROUND_INTENSITY | FOREGROUND_RED },
-    { Color::Bright_Green	, FOREGROUND_INTENSITY | FOREGROUND_GREEN },
-    { Color::Bright_Yellow	, FOREGROUND_INTENSITY | FOREGROUND_BLUE },
-    { Color::Bright_Blue	, FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN },
-    { Color::Bright_Magenta , FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_BLUE },
-    { Color::Bright_Cyan	, FOREGROUND_INTENSITY | FOREGROUND_GREEN | FOREGROUND_BLUE },
-    { Color::Bright_White	, FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE },
+    {Color::Black,          0},
+    {Color::Red,            FOREGROUND_RED},
+    {Color::Green,          FOREGROUND_GREEN},
+    {Color::Yellow,         FOREGROUND_RED | FOREGROUND_GREEN},
+    {Color::Blue,           FOREGROUND_BLUE},
+    {Color::Magenta,        FOREGROUND_RED | FOREGROUND_BLUE},
+    {Color::Cyan,           FOREGROUND_GREEN | FOREGROUND_BLUE},
+    {Color::White,          FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE},
+    {Color::Bright_Black,   FOREGROUND_INTENSITY},
+    {Color::Bright_Red,     FOREGROUND_INTENSITY | FOREGROUND_RED},
+    {Color::Bright_Green,   FOREGROUND_INTENSITY | FOREGROUND_GREEN},
+    {Color::Bright_Yellow,  FOREGROUND_INTENSITY | FOREGROUND_BLUE},
+    {Color::Bright_Blue,    FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN},
+    {Color::Bright_Magenta, FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_BLUE},
+    {Color::Bright_Cyan,    FOREGROUND_INTENSITY | FOREGROUND_GREEN | FOREGROUND_BLUE},
+    {Color::Bright_White,   FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE},
 };
 
 std::unordered_map<Color, WORD> bgColors = {
-    { Color::Black          , 0 },
-    { Color::Red	        , BACKGROUND_RED },
-    { Color::Green	        , BACKGROUND_GREEN },
-    { Color::Yellow	        , BACKGROUND_RED | BACKGROUND_GREEN },
-    { Color::Blue	        , BACKGROUND_BLUE },
-    { Color::Magenta	    , BACKGROUND_RED | BACKGROUND_BLUE },
-    { Color::Cyan	        , BACKGROUND_GREEN | BACKGROUND_BLUE },
-    { Color::White	        , BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE },
-    { Color::Bright_Black	, BACKGROUND_INTENSITY },
-    { Color::Bright_Red	    , BACKGROUND_INTENSITY | BACKGROUND_RED },
-    { Color::Bright_Green	, BACKGROUND_INTENSITY | BACKGROUND_GREEN },
-    { Color::Bright_Yellow	, BACKGROUND_INTENSITY | BACKGROUND_BLUE },
-    { Color::Bright_Blue	, BACKGROUND_INTENSITY | BACKGROUND_RED | BACKGROUND_GREEN },
-    { Color::Bright_Magenta , BACKGROUND_INTENSITY | BACKGROUND_RED | BACKGROUND_BLUE },
-    { Color::Bright_Cyan	, BACKGROUND_INTENSITY | BACKGROUND_GREEN | BACKGROUND_BLUE },
-    { Color::Bright_White	, BACKGROUND_INTENSITY | BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE },
+    {Color::Black,          0},
+    {Color::Red,            BACKGROUND_RED},
+    {Color::Green,          BACKGROUND_GREEN},
+    {Color::Yellow,         BACKGROUND_RED | BACKGROUND_GREEN},
+    {Color::Blue,           BACKGROUND_BLUE},
+    {Color::Magenta,        BACKGROUND_RED | BACKGROUND_BLUE},
+    {Color::Cyan,           BACKGROUND_GREEN | BACKGROUND_BLUE},
+    {Color::White,          BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE},
+    {Color::Bright_Black,   BACKGROUND_INTENSITY},
+    {Color::Bright_Red,     BACKGROUND_INTENSITY | BACKGROUND_RED},
+    {Color::Bright_Green,   BACKGROUND_INTENSITY | BACKGROUND_GREEN},
+    {Color::Bright_Yellow,  BACKGROUND_INTENSITY | BACKGROUND_BLUE},
+    {Color::Bright_Blue,    BACKGROUND_INTENSITY | BACKGROUND_RED | BACKGROUND_GREEN},
+    {Color::Bright_Magenta, BACKGROUND_INTENSITY | BACKGROUND_RED | BACKGROUND_BLUE},
+    {Color::Bright_Cyan,    BACKGROUND_INTENSITY | BACKGROUND_GREEN | BACKGROUND_BLUE},
+    {Color::Bright_White,   BACKGROUND_INTENSITY | BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE},
 };
 
 int setStyle(HANDLE hOut, int currentStyleHash, Attributes attributes) {
@@ -225,7 +225,7 @@ void ScreenBuffer::present() {
 #ifdef WIN32X
 #define _u8(x) x
 #else
-#define _u8(x) u8 ## x
+#define _u8(x) u8##x
 #endif
 
 void fill_rect(ScreenBuffer& screenBuffer, Rect rect, Color bgColor) {
@@ -237,7 +237,7 @@ void fill_rect(ScreenBuffer& screenBuffer, Rect rect, Color bgColor) {
     auto sizeX = rect.size.width;
     std::string blank(sizeX, ' ');
     for (int y = rect.topLeft.y; y < rect.bottomRight().y; ++y) {
-        screenBuffer.print(startX, y, blank, { Color::White, bgColor, Style::Normal });
+        screenBuffer.print(startX, y, blank, {Color::White, bgColor, Style::Normal});
     }
 }
 
@@ -293,11 +293,10 @@ void draw_rect(ScreenBuffer& screenBuffer, Rect clipRect, Rect rect, bool double
 ScreenCanvas::ScreenCanvas(ScreenBuffer& screenBuffer, Point origin, Rect clipRect)
     : m_screenBuffer(screenBuffer)
     , m_origin(origin)
-    , m_clipRect(clipRect)
-{
+    , m_clipRect(clipRect) {
     m_clipRect = m_clipRect.intersect(Rect(m_screenBuffer.getSize()));
     if (m_clipRect.isEmpty())
-        m_clipRect = Rect{ Point{0, 0}, Size{0, 0} };    // This is to make sure we can use clipRect as a clipping region.
+        m_clipRect = Rect{Point{0, 0}, Size{0, 0}}; // This is to make sure we can use clipRect as a clipping region.
 }
 
 ScreenCanvas ScreenCanvas::getSubCanvas(Rect rect) {
@@ -325,10 +324,12 @@ void ScreenCanvas::rect(Rect rect, bool doubleEdge, bool fill, Attributes attrib
 }
 
 void ScreenCanvas::print(Point pt, const std::string& text, Attributes normal, Attributes invalid, Attributes replacement) {
-    pt += m_origin.asSize();    // pt is in screen coordinates now.
+    pt += m_origin.asSize(); // pt is in screen coordinates now.
 
-    if (pt.y < m_clipRect.topLeft.y) return;
-    if (pt.y >= m_clipRect.bottomRight().y) return;
+    if (pt.y < m_clipRect.topLeft.y)
+        return;
+    if (pt.y >= m_clipRect.bottomRight().y)
+        return;
 
     auto codePointInfos = terminal_editor::parseLine(text);
     auto graphemes = terminal_editor::renderLine(codePointInfos);
@@ -343,7 +344,7 @@ void ScreenCanvas::print(Point pt, const std::string& text, Attributes normal, A
 
         if (grapheme.kind == terminal_editor::GraphemeKind::NORMAL) {
             // Draw grapheme only if it fits on the canvas completely.
-            if ( (curX >= m_clipRect.topLeft.x) && (curX + grapheme.width <= m_clipRect.bottomRight().x) ) {
+            if ((curX >= m_clipRect.topLeft.x) && (curX + grapheme.width <= m_clipRect.bottomRight().x)) {
                 m_screenBuffer.print(curX, pt.y, grapheme.rendered, normal);
             }
 
@@ -354,7 +355,7 @@ void ScreenCanvas::print(Point pt, const std::string& text, Attributes normal, A
             auto graphemesG = terminal_editor::renderLine(codePointInfosG);
             for (const auto& graphemeG : graphemesG) {
                 // Draw grapheme only if it fits on the canvas completely.
-                if ( (curX >= m_clipRect.topLeft.x) && (curX + graphemeG.width <= m_clipRect.bottomRight().x) ) {
+                if ((curX >= m_clipRect.topLeft.x) && (curX + graphemeG.width <= m_clipRect.bottomRight().x)) {
                     m_screenBuffer.print(curX, pt.y, graphemeG.rendered, (grapheme.kind == terminal_editor::GraphemeKind::INVALID) ? invalid : replacement);
                 }
 
