@@ -45,8 +45,8 @@ class ScreenBuffer;
 
 class ScreenCanvas {
     ScreenBuffer& m_screenBuffer;
-    Point m_origin;     ///< Point in screen coordinates that all drawing functions are relative to.
-    Rect m_clipRect;    ///< In screen coordinates.
+    Point m_origin;  ///< Point in screen coordinates that all drawing functions are relative to.
+    Rect m_clipRect; ///< In screen coordinates.
 public:
     /// clipRect will be clipped to screenBuffer bounds.
     ScreenCanvas(ScreenBuffer& screenBuffer, Point origin, Rect clipRect);
@@ -58,7 +58,7 @@ public:
     /// Clears canvas to given color.
     void clear(Color bgColor) {
         auto localRect = m_clipRect;
-        localRect.move(-m_origin.asSize());  // In local coordinates.
+        localRect.move(-m_origin.asSize()); // In local coordinates.
         fill(localRect, bgColor);
     }
 
@@ -70,7 +70,7 @@ public:
 
     /// Draws given text on the canvas.
     /// Text is clipped to boundaries of the canvas.
-    /// So only graphemes fully inside the 
+    /// So only graphemes fully inside are drawn.
     /// @param text     Input string, doesn't have to be valid or printable UTF-8.
     void print(Point pt, const std::string& text, Attributes normal, Attributes invalid, Attributes replacement);
 };
@@ -78,8 +78,8 @@ public:
 class ScreenBuffer {
 private:
     struct Character {
-        std::string text;   ///< UTF-8 text to draw. If empty, then this place will be drawn by preceeding character with width > 1.
-        int width;          ///< Width of text once it will be rendered.
+        std::string text; ///< UTF-8 text to draw. If empty, then this place will be drawn by preceeding character with width > 1.
+        int width;        ///< Width of text once it will be rendered.
         Attributes attributes;
 
         bool operator==(const Character& other) const {
@@ -98,7 +98,9 @@ private:
     bool fullRepaintNeeded;
 
 public:
-    ScreenBuffer() : fullRepaintNeeded(true) {}
+    ScreenBuffer()
+        : fullRepaintNeeded(true) {
+    }
 
     ScreenCanvas getCanvas() {
         return ScreenCanvas(*this, Point{0, 0}, getSize());

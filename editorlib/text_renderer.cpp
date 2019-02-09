@@ -10,7 +10,7 @@ namespace terminal_editor {
 
 Grapheme renderGrapheme(gsl::span<const CodePointInfo> codePointInfos) {
     if (codePointInfos.empty()) {
-        return { GraphemeKind::NORMAL, "", "", 0, {} };
+        return {GraphemeKind::NORMAL, "", "", 0, {}};
     }
 
     std::string fullRendered;
@@ -67,7 +67,7 @@ Grapheme renderGrapheme(gsl::span<const CodePointInfo> codePointInfos) {
         }
     }
 
-    Grapheme grapheme = { kind, fullRendered, fullInfos, fullWidth, { codePointInfos[0].consumedInput.data(), numBytes } };
+    Grapheme grapheme = {kind, fullRendered, fullInfos, fullWidth, {codePointInfos[0].consumedInput.data(), numBytes}};
     return grapheme;
 }
 
@@ -100,7 +100,7 @@ std::vector<Grapheme> renderLine(gsl::span<CodePointInfo> codePointInfos) {
                 rendered.append(1, hex[byte & 0x0F]);
                 int width = static_cast<int>(rendered.size()); // @todo This is a simplification that works for now.
 
-                Grapheme grapheme = { GraphemeKind::INVALID, rendered, codePointInfo.info, width, { codePointInfo.consumedInput.data() + i, 1 } };
+                Grapheme grapheme = {GraphemeKind::INVALID, rendered, codePointInfo.info, width, {codePointInfo.consumedInput.data() + i, 1}};
                 graphemes.push_back(grapheme);
             }
 
@@ -108,7 +108,7 @@ std::vector<Grapheme> renderLine(gsl::span<CodePointInfo> codePointInfos) {
             continue;
         }
 
-        auto grapheme = renderGrapheme(codePointInfos.subspan(currentPos, 1));  // @todo We basically process each CodePointInfo twice. Improve.
+        auto grapheme = renderGrapheme(codePointInfos.subspan(currentPos, 1)); // @todo We basically process each CodePointInfo twice. Improve.
         if (grapheme.width == 0) {
             continue;
         }

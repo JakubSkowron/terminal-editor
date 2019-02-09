@@ -18,10 +18,10 @@ class WindowManager;
 
 class Window {
 private:
-    WindowManager* m_windowManager;   ///< Reference to the WindowManager that is coordinating this window. All windows must die before their windows manager.
-    std::string m_name; ///< Name of this window. Debug only. Doesn't have to be unique. (This is not the same thing as window title.)
-    Window* m_parent;   ///< Parent of the Window. Can be nullptr only for windows that are not chilren of another window.
-    Rect m_rect;        ///< Window position, relative to parent.
+    WindowManager* m_windowManager; ///< Reference to the WindowManager that is coordinating this window. All windows must die before their windows manager.
+    std::string m_name;             ///< Name of this window. Debug only. Doesn't have to be unique. (This is not the same thing as window title.)
+    Window* m_parent;               ///< Parent of the Window. Can be nullptr only for windows that are not chilren of another window.
+    Rect m_rect;                    ///< Window position, relative to parent.
     std::vector<std::unique_ptr<Window>> m_children;
 
 public:
@@ -169,6 +169,7 @@ class BasicWindow : public Window {
     Attributes m_attributes;
 
     std::string m_message;
+
 public:
     BasicWindow(WindowManager* windowManager, const std::string& name, Rect rect, bool doubleEdge, Attributes attributes)
         : Window(windowManager, name, rect)
@@ -191,11 +192,11 @@ class WindowManager {
     std::unique_ptr<Window> m_rootWindow;
     std::vector<Window*> m_debugWindows;
     tl::optional<Window*> m_focusedWindow;
+
 public:
     WindowManager()
-        : m_focusedWindow(nullptr)
-    {
-        m_rootWindow = std::make_unique<BasicWindow>(this, "Root Window", Rect(), true, Attributes { Color::Black, Color::White, Style::Normal });
+        : m_focusedWindow(nullptr) {
+        m_rootWindow = std::make_unique<BasicWindow>(this, "Root Window", Rect(), true, Attributes{Color::Black, Color::White, Style::Normal});
         setFocusedWindow(m_rootWindow.get());
     }
 

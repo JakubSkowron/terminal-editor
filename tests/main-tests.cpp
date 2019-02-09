@@ -12,9 +12,9 @@
 
 #include <gsl/span>
 
-int main (int argc, char * argv[]) {
-    std::setlocale(LC_ALL, "en_US.UTF8");       // @note This is a hack to make sure wcwidth() understands unicode characters.
-    return Catch::Session().run( argc, argv );
+int main(int argc, char* argv[]) {
+    std::setlocale(LC_ALL, "en_US.UTF8"); // @note This is a hack to make sure wcwidth() understands unicode characters.
+    return Catch::Session().run(argc, argv);
 }
 
 using namespace terminal_editor;

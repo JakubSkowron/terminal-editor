@@ -13,10 +13,9 @@
 /// LOG(INFO) << "Memory usage: " << 5;
 /// LOG(DEBUG) << "Memory usage: " << 5;
 
-
 #if ZVA_OPT_SUPPORTED
 
-#define LOG(...) (terminal_editor::LogHelper( (LogLevel::INFO __VA_OPT__(, LogLevel::) __VA_ARGS__),  __FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): ").message)
+#define LOG(...) (terminal_editor::LogHelper((LogLevel::INFO __VA_OPT__(, LogLevel::) __VA_ARGS__), __FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): ").message)
 
 #else
 
@@ -26,10 +25,9 @@
 #define LOGHACK_INFO    terminal_editor::LogLevel::INFO
 #define LOGHACK_DEBUG   terminal_editor::LogLevel::DEBUG
 
-#define LOG(...) (terminal_editor::LogHelper(LOGHACK_ ## __VA_ARGS__,  __FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): ").message)
+#define LOG(...) (terminal_editor::LogHelper(LOGHACK_##__VA_ARGS__, __FILE__ "(" ZTOKEN_STRINGIZE(__LINE__) "): ").message)
 
 #endif
-
 
 namespace terminal_editor {
 
@@ -49,10 +47,10 @@ public:
         : logLevel(logLevel)
     {
         switch (logLevel) {
-            case LogLevel::ERROR:   message << "ERROR: "; break;
+            case LogLevel::ERROR: message << "ERROR: "; break;
             case LogLevel::WARNING: message << "WARNING: "; break;
-            case LogLevel::INFO:    message << "INFO: "; break;
-            case LogLevel::DEBUG:   message << "DEBUG: "; break;
+            case LogLevel::INFO: message << "INFO: "; break;
+            case LogLevel::DEBUG: message << "DEBUG: "; break;
         }
         message << messageBase;
     }

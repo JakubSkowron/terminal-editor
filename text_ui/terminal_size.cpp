@@ -44,18 +44,19 @@ static void update_screen_size() {
 
 /* Window change signal handler */
 static void signal_handler_window_changed(int signo) {
-  if (signo != SIGWINCH) return;
+    if (signo != SIGWINCH)
+        return;
 
-  // prevent re-entry
-  ::signal(SIGWINCH, SIG_IGN);
+    // prevent re-entry
+    ::signal(SIGWINCH, SIG_IGN);
 
-  // TODO: use flag and std::condition_variable::notify_one() here
-  //       to notify other thread which will make change under mutex
-  update_screen_size();
-  fire_screen_resize_event();
+    // TODO: use flag and std::condition_variable::notify_one() here
+    //       to notify other thread which will make change under mutex
+    update_screen_size();
+    fire_screen_resize_event();
 
-  // reinstall handler
-  ::signal(SIGWINCH, signal_handler_window_changed);
+    // reinstall handler
+    ::signal(SIGWINCH, signal_handler_window_changed);
 }
 
 void initialize(std::function<void(int width, int height)> listener) {
@@ -72,4 +73,4 @@ void shutdown() {
 
 #endif
 
-}  // namespace terminal_size
+} // namespace terminal_size

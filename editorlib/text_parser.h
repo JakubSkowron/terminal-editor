@@ -16,10 +16,10 @@ const char* controlCharacterName(uint32_t codePoint);
 
 /// Describes return value of getFirstCodePoint() function.
 struct CodePointInfo {
-    bool valid;                             ///< True if valid code point was decoded. False otherwise.
-    gsl::span<const char> consumedInput;    ///< Bytes consumed from the input data. Length will be from 1 to 6.
-    std::string info;                       ///< Arbitrary information about consumed bytes. If 'valid' is false will contain error information.
-    uint32_t codePoint;                     ///< Decoded code point. Valid only if 'valid' is true.
+    bool valid;                          ///< True if valid code point was decoded. False otherwise.
+    gsl::span<const char> consumedInput; ///< Bytes consumed from the input data. Length will be from 1 to 6.
+    std::string info;                    ///< Arbitrary information about consumed bytes. If 'valid' is false will contain error information.
+    uint32_t codePoint;                  ///< Decoded code point. Valid only if 'valid' is true.
 };
 
 /// Figures out what grapeheme is at the begining of data and returns it.

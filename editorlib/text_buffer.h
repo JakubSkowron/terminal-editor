@@ -17,8 +17,8 @@ std::vector<std::string> splitString(const std::string& text, char delimiter);
 /// This class describes position in a TextBuffer.
 /// Positions are logically between characters.
 struct Position {
-    int row;        ///< Row in text (zero indexed).
-    int column;     ///< Column in row (zero indexed).
+    int row;    ///< Row in text (zero indexed).
+    int column; ///< Column in row (zero indexed).
 
     Position() : row(0), column(0) {}
     Position(int row, int column) : row(row), column(column) {}
@@ -30,9 +30,9 @@ struct Position {
         return !(position0 == position1);
     }
     friend bool operator<(Position position0, Position position1) {
-        if (position0.row < position1.row) 
+        if (position0.row < position1.row)
             return true;
-        if (position0.row > position1.row) 
+        if (position0.row > position1.row)
             return false;
 
         return position0.column < position1.column;
@@ -58,7 +58,8 @@ private:
 
 public:
     /// Empty virtual destructor.
-    virtual ~TextBuffer() {}
+    virtual ~TextBuffer() {
+    }
 
     /// Replaces contents of this text buffer with contents of given file.
     /// @param fileName     Name of file to load.

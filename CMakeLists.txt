@@ -139,6 +139,7 @@ add_custom_target(LOOSE_FILES
                     editor-config.json
                     terminal_test_positions.sh
                     format_source.sh
+                    .clang-format
                   )
 
 if(WIN32)

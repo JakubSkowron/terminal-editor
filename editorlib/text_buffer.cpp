@@ -18,8 +18,7 @@ std::vector<std::string> splitString(const std::string& text, char delimiter) {
 
     std::istringstream tokenStream(text);
     bool lastLineHadEof = false;
-    while (std::getline(tokenStream, token, delimiter))
-    {
+    while (std::getline(tokenStream, token, delimiter)) {
         lastLineHadEof = tokenStream.eof();
         tokens.push_back(token);
     }
@@ -42,7 +41,7 @@ int TextBuffer::getNumberOfLines() const {
 
 int TextBuffer::getLongestLineLength() const {
     // @todo This is a stub implementation.
-    auto longestPos = std::max_element(lines.begin(), lines.end(), [](const auto& text0, const auto& text1) { return text0.size() < text1.size(); } );
+    auto longestPos = std::max_element(lines.begin(), lines.end(), [](const auto& text0, const auto& text1) { return text0.size() < text1.size(); });
     if (longestPos == lines.end())
         return 0;
     return static_cast<int>(longestPos->size());
@@ -183,10 +182,10 @@ Position TextBuffer::find(Position startPosition, const std::string& text) const
         if (pos == std::string::npos)
             continue;
 
-        return { i, static_cast<int>(pos) };
+        return {i, static_cast<int>(pos)};
     }
 
-    return { getNumberOfLines(), 0 }; // String not found.
+    return {getNumberOfLines(), 0}; // String not found.
 }
 
 bool TextBuffer::isPastEnd(Position position) const {
@@ -217,7 +216,7 @@ Position UndoableTextBuffer::insertText(Position position, const std::string& te
 
     auto endPosition = this->TextBuffer::insertText(position, text);
 
-    EditAction insertion = { true, position, endPosition, text };
+    EditAction insertion = {true, position, endPosition, text};
     m_actionBuffer.push_back(insertion);
     m_redoPosition = static_cast<int>(m_actionBuffer.size());
 
@@ -239,7 +238,7 @@ std::string UndoableTextBuffer::deleteText(Position startPosition, Position endP
 
     auto deletedText = this->TextBuffer::deleteText(startPosition, endPosition);
 
-    EditAction deletion = { false, startPosition, endPosition, deletedText };
+    EditAction deletion = {false, startPosition, endPosition, deletedText};
     m_actionBuffer.push_back(deletion);
     m_redoPosition = static_cast<int>(m_actionBuffer.size());
 

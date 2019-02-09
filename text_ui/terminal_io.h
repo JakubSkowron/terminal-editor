@@ -26,68 +26,68 @@ extern int mouseY;
 
 /* Turns echo and canonical mode off, enter raw mode. */
 class TerminalRawMode {
- public:
-  /* Enter raw mode, including:
-    ~ECHO turn off echo
-    ~ICANON turn off canonical mode (don't wait for Enter)
-    ~ISIG don't send signals on Ctrl-C, Ctrl-Z
-    ~IEXTEN disable Ctrl-V
-    ~IXON turn off Ctrl-S, Ctrl-Q XON/XOFF
-    ~ICRLN turn off reading Enter (13) as '\n' (10)
-    ~OPOST turn off translating '\n' to '\r\n' on output
-  */
-  TerminalRawMode();
+public:
+    /* Enter raw mode, including:
+      ~ECHO turn off echo
+      ~ICANON turn off canonical mode (don't wait for Enter)
+      ~ISIG don't send signals on Ctrl-C, Ctrl-Z
+      ~IEXTEN disable Ctrl-V
+      ~IXON turn off Ctrl-S, Ctrl-Q XON/XOFF
+      ~ICRLN turn off reading Enter (13) as '\n' (10)
+      ~OPOST turn off translating '\n' to '\r\n' on output
+    */
+    TerminalRawMode();
 
-  /* Restores state in destructor. */
-  ~TerminalRawMode();
+    /* Restores state in destructor. */
+    ~TerminalRawMode();
 
 private:
 #ifndef WIN32
-  ::termios tios_backup;
+    ::termios tios_backup;
 #else
-  HANDLE hOut;
-  HANDLE hIn;
-  DWORD dwOriginalOutMode;
-  DWORD dwOriginalInMode;
+    HANDLE hOut;
+    HANDLE hIn;
+    DWORD dwOriginalOutMode;
+    DWORD dwOriginalInMode;
 #endif
 };
 
 /* Turn on mouse tracking */
 class MouseTracking {
- public:
-  MouseTracking();
-  ~MouseTracking();
+public:
+    MouseTracking();
+    ~MouseTracking();
 };
 
 union Event {
-  enum class Type { KeyPressed, Esc, Error, WindowSize };
+    enum class Type { KeyPressed, Esc, Error, WindowSize };
 
-  // common initial sequence for union
-  struct {
-    Type type;
-  } common;
+    // common initial sequence for union
+    struct {
+        Type type;
+    } common;
 
-  struct KeyPressed {
-    Type type;      // = Type::KeyPressed;
-    char keys[20];  // null terminated UTF-8 sequence TODO: make it not fixed 20
-    bool ctrl;
-  } keypressed;
+    struct KeyPressed {
+        Type type;     // = Type::KeyPressed;
+        char keys[20]; // null terminated UTF-8 sequence TODO: make it not fixed 20
+        bool ctrl;
+    } keypressed;
 
-  struct Esc {
-    Type type;       // = Type::Esc;
-    char bytes[20];  // null terminated escape sequence TODO: make it not fixed 20
-  } esc;
+    struct Esc {
+        Type type;      // = Type::Esc;
+        char bytes[20]; // null terminated escape sequence TODO: make it not fixed 20
+    } esc;
 
-  struct Error {
-    Type type;        // = Type::Error;
-    const char* msg;  // TODO: is it possible to use std::string in union?
-  } error;
+    struct Error {
+        Type type;       // = Type::Error;
+        const char* msg; // TODO: is it possible to use std::string in union?
+    } error;
 
-  struct WindowSize {
-    Type type;  // = Type::WindowSize;
-    int width;
-    int height;
-  } window_size;
+    struct WindowSize {
+        Type type; // = Type::WindowSize;
+        int width;
+        int height;
+    } window_size;
 };
 
 /// Returns action that is bound to given Event.
@@ -101,32 +101,32 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
 char ctrl_to_key(unsigned char code);
 
 class EventQueue {
- public:
-  void push(Event e);
-  // locking function
-  tl::optional<Event> poll(bool block);
+public:
+    void push(Event e);
+    // locking function
+    tl::optional<Event> poll(bool block);
 
- private:
-  std::queue<Event> queue;
-  std::condition_variable cv;
-  std::mutex mutex;
+private:
+    std::queue<Event> queue;
+    std::condition_variable cv;
+    std::mutex mutex;
 };
 
 // Pushes input events to EventQueue
 class InputThread {
- public:
-  // TODO: should InputThread get ownership of queue? Probably no.
-  InputThread(EventQueue& event_queue);
-  ~InputThread();
+public:
+    // TODO: should InputThread get ownership of queue? Probably no.
+    InputThread(EventQueue& event_queue);
+    ~InputThread();
 
- private:
-  EventQueue& event_queue;  // should be declared before thread
-  std::thread thread;
+private:
+    EventQueue& event_queue; // should be declared before thread
+    std::thread thread;
 
-  void loop();
-  bool break_loop = false;
+    void loop();
+    bool break_loop = false;
 };
 
-}  // namespace terminal
+} // namespace terminal
 
-#endif  // TERMINAL_IO_H
+#endif // TERMINAL_IO_H
