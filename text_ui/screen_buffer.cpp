@@ -15,7 +15,7 @@ void ScreenBuffer::resize(int w, int h) {
     size.width = w;
     size.height = h;
 
-    Character emptyCharacter{" ", 1, Color::Yellow, Color::Red, Style::Normal};
+    Character emptyCharacter{" ", 1, {Color::Yellow, Color::Red, Style::Normal}};
 
     characters.resize(0);
     previousCharacters.resize(0);
@@ -26,7 +26,7 @@ void ScreenBuffer::resize(int w, int h) {
 }
 
 void ScreenBuffer::clear(Color bgColor) {
-    Character emptyCharacter{" ", 1, Color::Yellow, bgColor, Style::Normal};
+    Character emptyCharacter{" ", 1, {Color::Yellow, bgColor, Style::Normal}};
 
     characters.resize(0);
     characters.resize(size.width * size.height, emptyCharacter);
@@ -62,7 +62,7 @@ void ScreenBuffer::print(int x, int y, const std::string& text, Attributes attri
         curX += grapheme.width;
 
         // Fill vacum left by overwriting existing graphemes.
-        Character vacumCharacter{" ", 1, Color::Cyan, Color::Yellow, Style::Normal};
+        Character vacumCharacter{" ", 1, {Color::Cyan, Color::Yellow, Style::Normal}};
         for (int i = curX; i < endX; ++i) {
             characters[y * size.width + i] = vacumCharacter;
         }
