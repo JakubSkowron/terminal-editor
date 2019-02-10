@@ -7,6 +7,7 @@
 #include "zlogging.h"
 #include "zstr.h"
 #include "window.h"
+#include "zerrors.h"
 
 #include <chrono>
 #include <cstdio>
@@ -111,7 +112,12 @@ int main() {
                         continue;
 
                     if (*action == "box") {
-                        messageBox(activeWindow, *action);
+                        try {
+                            ZTHROW() << "Bug?";
+                        }
+                        catch (...) {
+                            messageBox(activeWindow, *action);
+                        }
                     }
 
                     if (*action == "kill-box") {

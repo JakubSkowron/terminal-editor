@@ -33,13 +33,7 @@ KeyMap::MouseButton from_string<KeyMap::MouseButton>(const std::string& mouseBut
 /// Returns true if given json object has given key.
 /// Value under the key does not matter (it can also be null).
 bool hasKey(const nlohmann::json& j, const std::string& key) {
-    try {
-        j.at(key);
-        return true;
-    }
-    catch (const nlohmann::json::out_of_range&) {
-        return false;
-    }
+    return j.find(key) != j.end();
 }
 
 /// Serializes KeyBinding to json.
