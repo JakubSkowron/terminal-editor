@@ -5,6 +5,8 @@
 #define TERMINAL_IO_H
 
 #include "editor_config.h"
+#include "text_parser.h"
+#include "geometry.h"
 
 #include <condition_variable>
 #include <mutex>
@@ -61,12 +63,60 @@ public:
 };
 
 struct KeyPressed {
-    std::string keys;   ///< UTF-8 string. Will bever be empty.
-    bool ctrl;          ///< True if CTRL was held.
+    uint32_t codePoint; ///< Unicode code point.
+
+    /// Returns true if CTRL was held.
+    bool wasCtrlHeld() const {
+        // Ctrl key strips high 3 bits from character on input
+        // Use key | 0x40 to get 'A' from 1
+        return (codePoint <= 0x7F) && ((codePoint & 0xE0) == 0);
+    }
+
+    /// Returns unicode character that was input, in UTF-8 encoding.
+    /// If CTRL was held, returns reconstructed character.
+    std::string getUtf8() const {
+        std::string result;
+
+        if (codePoint > 0x7F) {
+            terminal_editor::appendCodePoint(result, codePoint);
+            return result;
+        }
+
+        if (!wasCtrlHeld()) {
+            terminal_editor::appendCodePoint(result, codePoint);
+            return result;
+        }
+
+        // Ctrl key strips high 3 bits from character on input
+        // Use key | 0x40 to get 'A' from 1
+        terminal_editor::appendCodePoint(result, codePoint | 0x40);
+        return result;
+    }
+
+    /// Returns ASCII character that was input.
+    /// If CTRL was held, returns reconstructed character.
+    /// Returns nullopt if a non-ascii character was input.
+    tl::optional<char> getAscii() const {
+        if (codePoint > 0x7F)
+            return tl::nullopt;
+
+        // Ctrl key strips high 3 bits from character on input
+        // Use key | 0x40 to get 'A' from 1
+        return static_cast<char>(codePoint | 0x40);
+    }
 };
 
 struct Esc {
-    std::string bytes;  ///< UTF-8 string, starting with 27 (\x1b). Will never be empty.
+    char secondByte;  ///< Second byte of the escape sequence.
+
+    bool isCSI() const {
+        return secondByte == '[';
+    }
+
+    // Fields below are valid only CSI sequences, so if secondByte == '['.
+    std::string csiParameterBytes;
+    std::string csiIntermediateBytes;
+    char csiFinalByte;
 };
 
 struct Error {
@@ -78,17 +128,25 @@ struct WindowSize {
     int height;
 };
 
-using Event = std::variant<KeyPressed, Esc, Error, WindowSize>;
+struct MouseEvent {
+    enum class Kind {
+        LMB = 0,
+        MMB = 1,
+        RMB = 2,
+        AllReleased = 3,
+        Drag = 32,
+    };
+    Kind kind;
+    Point position;
+};
+
+using Event = std::variant<KeyPressed, Esc, Error, WindowSize, MouseEvent>;
 
 /// Returns action that is bound to given Event.
 /// @param contextName      Name of the key map to use.
 /// @param event            Event to check for actions in key map.
 /// @param editorConfig     EditorConfig that contains key maps.
 tl::optional<std::string> getActionForEvent(const std::string& contextName, const Event& event, const terminal_editor::EditorConfig& editorConfig);
-
-// Returns code | 0x40, i.e. 1 -> 'A'
-// Useful to compare code with a Ctrl-Key
-char ctrl_to_key(unsigned char code);
 
 class EventQueue {
 public:

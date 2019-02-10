@@ -5,6 +5,7 @@
 #include "editor_config.h"
 #include "screen_buffer.h"
 #include "zlogging.h"
+#include "zstr.h"
 #include "window.h"
 
 #include <chrono>
@@ -131,7 +132,7 @@ int main() {
                 }
                 else
                 if (auto keyEvent = std::get_if<KeyPressed>(&e)) {
-                    if (keyEvent->ctrl == true && ctrl_to_key(keyEvent->keys[0]) == 'Q') {
+                    if (keyEvent->wasCtrlHeld() && (keyEvent->getAscii() == 'Q')) {
                         messageBox(rootWindow, "Good bye");
                         redraw();
                         screenBuffer.present();
@@ -140,18 +141,12 @@ int main() {
                     }
 
                     std::string key;
-                    // Ctrl
-                    if (keyEvent->ctrl) {
+                    if (keyEvent->wasCtrlHeld()) {
                         key = "Ctrl-";
-                        key += ctrl_to_key(keyEvent->keys[0]);
-                    } else {
-                        key = keyEvent->keys;
                     }
-
-                    auto message = key;
-                    if (key.size() == 1)
-                        message += " (" + std::to_string(keyEvent->keys[0]) + ")";
-                    push_line(message);
+                    key += keyEvent->getUtf8();
+                    key += " (" + std::to_string(keyEvent->codePoint) + ")";
+                    push_line(key);
                 }
                 else
                 if (auto windowSize = std::get_if<WindowSize>(&e)) {
@@ -167,12 +162,21 @@ int main() {
                 else
                 if (auto esc = std::get_if<Esc>(&e)) {
                     std::string message = "Esc ";
-                    for (char c : esc->bytes) {
-                        if (c < 32)
-                            message += "\\" + std::to_string(c);
-                        else
-                            message += c;
+                    message += esc->secondByte;
+                    if (esc->isCSI()) {
+                        message += ZSTR() << " CSI params=" << esc->csiParameterBytes << " inter=" << esc->csiIntermediateBytes << " final=" << esc->csiFinalByte;
                     }
+                    push_line(message);
+                }
+                else
+                if (auto error = std::get_if<Error>(&e)) {
+                    std::string message = "Esc ";
+                    message += error->msg;
+                    push_line(message);
+                }
+                else
+                if (auto mouseEvent = std::get_if<MouseEvent>(&e)) {
+                    std::string message = "Mouse";
                     push_line(message);
                 }
                 else {

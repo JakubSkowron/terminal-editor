@@ -5,11 +5,16 @@
 
 #include "zerrors.h"
 #include "zlogging.h"
+#include "zstr.h"
+#include "text_parser.h"
+
+#include <tl/expected.hpp>
 
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <system_error>
+#include <regex>
 
 #ifdef WIN32
 #include "terminal_size.h"
@@ -47,16 +52,11 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
             if (binding.mouseButton)
                 continue;
 
-            if (binding.ctrl != keyEvent->ctrl)
+            if (binding.ctrl != keyEvent->wasCtrlHeld())
                 continue;
 
-            if (keyEvent->ctrl) {
-                if (binding.key != std::string() + ctrl_to_key(keyEvent->keys[0]))
-                    continue;
-            } else {
-                if (binding.key != static_cast<std::string>(keyEvent->keys))
-                    continue;
-            }
+            if (binding.key != keyEvent->getUtf8())
+                continue;
 
             return binding.action;
         }
@@ -178,10 +178,6 @@ MouseTracking::~MouseTracking() {
     }
 }
 
-char ctrl_to_key(unsigned char code) {
-    return code | 0x40;
-}
-
 void EventQueue::push(Event e) {
     {
         std::unique_lock<std::mutex> lock{mutex};
@@ -209,12 +205,13 @@ tl::optional<std::string> readConsole() {
     if (hStdin == INVALID_HANDLE_VALUE)
         ZHARDASSERT(false) << "Could not get console input handle: " << GetLastError();
 
+    // @todo Read all available characters.
     DWORD cNumRead;
-    INPUT_RECORD irInBuf[128];
+    INPUT_RECORD irInBuf[1024];
 
     if (!ReadConsoleInput(hStdin,     // input buffer handle
                           irInBuf,    // buffer to read into
-                          128,        // size of read buffer
+                          1024,        // size of read buffer
                           &cNumRead)) // number of records read
     {
         ZHARDASSERT(false) << "Could not read input from console: " << GetLastError();
@@ -266,8 +263,8 @@ tl::optional<std::string> readConsole() {
 }
 #else
 tl::optional<std::string> readConsole() {
-    // TODO: make it not fixed width
-    char buf[20];
+    // @todo Read all available characters.
+    char buf[1024];
     auto count = ::read(::fileno(stdin), buf, sizeof(buf) - 1);
     if (count == -1)
         return tl::nullopt; // Error.
@@ -277,52 +274,183 @@ tl::optional<std::string> readConsole() {
 }
 #endif
 
+tl::optional<MouseEvent> extractMouseEvent(const Esc& esc) {
+    if (!esc.isCSI())
+        return tl::nullopt;
+
+    return tl::nullopt;
+}
+
+tl::expected<uint32_t, std::string> eatCodePoint(std::string& txt) {
+    if (txt.empty()) {
+        return tl::make_unexpected("Console input was empty.");
+    }
+
+    using namespace terminal_editor;
+    CodePointInfo codePoint = getFirstCodePoint(txt);
+
+    if (!codePoint.valid) {
+        std::stringstream ss;
+        ss << "Console input was not a valid UTF-8 sequence: " << codePoint.info << " . Input in question: " << txt;
+        txt = txt.substr(codePoint.consumedInput.size());
+        return tl::make_unexpected(ss.str());
+    }
+
+    txt = txt.substr(codePoint.consumedInput.size());
+    return codePoint.codePoint;
+}
+
 // TODO: consider non-blocking IO (or poll/select) and a joinable thread
 void InputThread::loop() {
     while (true) {
         auto txtopt = readConsole();
-        if (!txtopt)
-            break; // Error.
-
         if (break_loop)
             return;
 
-        const auto& txt = *txtopt;
-
-        if (txt.empty()) {
-            continue;
+        if (!txtopt) {
+            Error error;
+            if (std::feof(stdin)) {
+                error.msg = "stdin EOF";
+            }
+            if (std::ferror(stdin)) {
+                error.msg = "stdin ERROR";
+            }
+            event_queue.push(error);
+            break;
         }
 
-        if (txt[0] == 0x1b) {
+        auto& txt = *txtopt;
+
+        while (!txt.empty()) {
+            // Eat normal inputs.
+            while (true) {
+                if (txt.empty())
+                    break;
+                
+                auto codePoint = eatCodePoint(txt);
+                if (!codePoint) {
+                    Error error { codePoint.error() };
+                    event_queue.push(error);
+                    continue;
+                }
+
+                // Move to processing escape sequence.
+                if (*codePoint == 0x1b) {
+                    if (txt.empty()) {
+                        Error error { ZSTR() << "No second byte of the escape sequence." };
+                        event_queue.push(error);
+                    }
+                    break;
+                }
+
+                KeyPressed keyEvent;
+                keyEvent.codePoint = *codePoint;
+                event_queue.push(keyEvent);
+            }
+
+            if (txt.empty())
+                break;
+
+            // We have an escape sequence. Parse it.
+            // See: https://en.wikipedia.org/wiki/ANSI_escape_code
+
+            auto eatByteInRange = [&txt](uint8_t min, uint8_t max) -> tl::expected<tl::optional<char>, std::string> {
+                auto saveTxt = txt;
+                auto codePoint = eatCodePoint(txt);
+                if (!codePoint) {
+                    return tl::make_unexpected(codePoint.error());
+                }
+
+                if ((*codePoint < min) || (*codePoint > max)) {
+                    txt = saveTxt;
+                    return tl::nullopt;
+                }
+
+                return static_cast<char>(*codePoint);
+            };
+
+            auto eatBytesInRange = [&eatByteInRange](uint8_t min, uint8_t max) -> tl::expected<std::string, std::string> {
+                std::string result;
+                while (true) {
+                    auto c = eatByteInRange(min, max);
+                    if (!c) {
+                        return tl::make_unexpected(c.error());
+                    }
+
+                    if (!*c) {
+                        return result;
+                    }
+
+                    result += **c;
+                }
+            };
+
+            {
+                auto secondByte = eatByteInRange(0x40, 0x5F);
+                if (!secondByte) {
+                    Error error { ZSTR() << "Escape sequence did not have second byte: " << secondByte.error() };
+                    event_queue.push(error);
+                    continue;
+                }
+                if (!*secondByte) {
+                    Error error { ZSTR() << "Invalid second byte of the escape sequence." };
+                    event_queue.push(error);
+                    continue;
+                }
+
+                if (**secondByte != '[') {
+                    Esc esc;
+                    esc.secondByte = **secondByte;
+                    event_queue.push(esc);
+                    continue;
+                }
+            }
+
+            // We have a CSI sequence.
+            // - eat all parameter bytes (0x30–0x3F)
+            // - eat all intermediate  bytes (0x20–0x2F)
+            // - eat final byte (0x40–0x7E)
+
+            auto parameterBytes = eatBytesInRange(0x30, 0x3F);
+            if (!parameterBytes) {
+                Error error { ZSTR() << "CSI sequence did not have final byte: " << parameterBytes.error() };
+                event_queue.push(error);
+                continue;
+            }
+
+            auto intermediateBytes = eatBytesInRange(0x20, 0x2F);
+            if (!intermediateBytes) {
+                Error error { ZSTR() << "CSI sequence did not have final byte: " << intermediateBytes.error() << " parameterBytes:" << *parameterBytes };
+                event_queue.push(error);
+                continue;
+            }
+
+            auto finalByte = eatByteInRange(0x40, 0x7E);
+            if (!finalByte) {
+                Error error { ZSTR() << "CSI sequence did not have final byte: " << finalByte.error() << " parameterBytes:" << *parameterBytes << " intermediateBytes:" << *intermediateBytes };
+                event_queue.push(error);
+                continue;
+            }
+            if (!*finalByte) {
+                Error error { ZSTR() << "Invalid CSI final byte. parameterBytes:" << *parameterBytes << " intermediateBytes:" << *intermediateBytes };
+                event_queue.push(error);
+                continue;
+            }
+
             Esc esc;
-            esc.bytes = txt;
-            event_queue.push(esc);
-            continue;
+            esc.secondByte = '[';
+            esc.csiParameterBytes = *parameterBytes;
+            esc.csiIntermediateBytes = *intermediateBytes;
+            esc.csiFinalByte = **finalByte;
+
+            auto mouseEvent = extractMouseEvent(esc);
+            if (mouseEvent) {
+                event_queue.push(*mouseEvent);
+            } else {
+                event_queue.push(esc);
+            }
         }
-
-        bool ctrl = false;
-        if (txt.size() == 1 && (txt[0] & 0xE0) == 0) {
-            // Ctrl key strips high 3 bits from character on input
-            // Use key | 0x40 to get 'A' from 1
-            ctrl = true;
-        }
-
-        // consider it as ordinary keypressed
-        KeyPressed keyEvent;
-        keyEvent.ctrl = ctrl;
-        keyEvent.keys = txt;
-        event_queue.push(keyEvent);
     }
-
-    // Error
-    Error error;
-    if (std::feof(stdin)) {
-        error.msg = "stdin EOF";
-    }
-    if (std::ferror(stdin)) {
-        error.msg = "stdin ERROR";
-    }
-    event_queue.push(error);
 }
 
 InputThread::InputThread(EventQueue& event_queue)
