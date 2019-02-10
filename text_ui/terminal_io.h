@@ -7,6 +7,7 @@
 #include "editor_config.h"
 #include "text_parser.h"
 #include "geometry.h"
+#include "zstr.h"
 
 #include <condition_variable>
 #include <mutex>
@@ -134,11 +135,27 @@ struct MouseEvent {
         MMB = 1,
         RMB = 2,
         AllReleased = 3,
-        Drag = 32,
+        LMBDrag = 32,
+        MMBDrag = 33,
+        RMBDrag = 34,
     };
     Kind kind;
     Point position;
 };
+
+inline std::ostream& operator<<(std::ostream& os, MouseEvent::Kind kind) {
+    switch (kind) {
+    case MouseEvent::Kind::LMB: return os << "LMB";
+    case MouseEvent::Kind::MMB: return os << "MMB";
+    case MouseEvent::Kind::RMB: return os << "RMB";
+    case MouseEvent::Kind::AllReleased: return os << "AllReleased";
+    case MouseEvent::Kind::LMBDrag: return os << "LMBDrag";
+    case MouseEvent::Kind::MMBDrag: return os << "MMBDrag";
+    case MouseEvent::Kind::RMBDrag: return os << "RMBDrag";
+    default:
+        return os << "Unknown mouse event: " << static_cast<int>(kind);
+    }
+}
 
 using Event = std::variant<KeyPressed, Esc, Error, WindowSize, MouseEvent>;
 

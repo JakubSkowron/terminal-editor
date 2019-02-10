@@ -170,14 +170,21 @@ int main() {
                 }
                 else
                 if (auto error = std::get_if<Error>(&e)) {
-                    std::string message = "Esc ";
+                    std::string message = "Error ";
                     message += error->msg;
                     push_line(message);
                 }
                 else
                 if (auto mouseEvent = std::get_if<MouseEvent>(&e)) {
                     std::string message = "Mouse";
-                    push_line(message);
+                    push_line(ZSTR() << "Mouse " << mouseEvent->kind << " x=" << mouseEvent->position.x << " y=" << mouseEvent->position.y);
+
+                    if (mouseEvent->kind == MouseEvent::Kind::LMB) {
+                        auto window = rootWindow->getWindowForPoint(mouseEvent->position);
+                        if (window) {
+                            windowManager.setFocusedWindow(*window);
+                        }
+                    }
                 }
                 else {
                     messageBox(rootWindow, "Default");

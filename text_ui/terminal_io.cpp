@@ -15,6 +15,8 @@
 #include <cstring>
 #include <system_error>
 #include <regex>
+//#include <charconv>
+#include <cstdlib>
 
 #ifdef WIN32
 #include "terminal_size.h"
@@ -278,7 +280,34 @@ tl::optional<MouseEvent> extractMouseEvent(const Esc& esc) {
     if (!esc.isCSI())
         return tl::nullopt;
 
-    return tl::nullopt;
+    if (!esc.csiIntermediateBytes.empty())
+        return tl::nullopt;
+
+    if ((esc.csiFinalByte != 'M') && (esc.csiFinalByte != 'm'))
+        return tl::nullopt;
+
+    const std::regex paramsRegex("<([0-9]+);([0-9]+);([0-9]+)");
+    std::smatch match;
+    if (!std::regex_match(esc.csiParameterBytes, match, paramsRegex))
+        return tl::nullopt;
+
+    auto codeMatch = match[1].str();
+    auto xMatch = match[2].str();
+    auto yMatch = match[3].str();
+    int code = static_cast<int>(std::strtol(codeMatch.c_str(), nullptr, 10));
+    int x = static_cast<int>(std::strtol(xMatch.c_str(), nullptr, 10));
+    int y = static_cast<int>(std::strtol(yMatch.c_str(), nullptr, 10));
+#if 0
+    std::from_chars(codeMatch.data(), codeMatch.data() + codeMatch.size(), code);
+    std::from_chars(xMatch.data(), xMatch.data() + xMatch.size(), x);
+    std::from_chars(yMatch.data(), yMatch.data() + yMatch.size(), y);
+#endif
+
+    MouseEvent event;
+    event.kind = static_cast<MouseEvent::Kind>(code);
+    event.position = Point{x - 1, y - 1};
+
+    return event;
 }
 
 tl::expected<uint32_t, std::string> eatCodePoint(std::string& txt) {
