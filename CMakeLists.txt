@@ -101,9 +101,10 @@ function(SetCompilerOptions targetName)
                 -Wno-sign-conversion        # don't warn on sign conversions (this is very noisy)
 
                 -stdlib=libc++              # Otherwise <variant> header is not being found. Also libc++ package needs to be installed on Ubuntu.
+                -fexceptions
             )
             #target_link_options(${targetName} PRIVATE -stdlib=libc++)  # target_link_options is available since CMake 3.14 I think.
-            target_link_libraries(${targetName} PRIVATE c++abi)
+            #target_link_libraries(${targetName} PRIVATE c++abi)
             target_link_libraries(${targetName} PRIVATE atomic)
         else()
             list(APPEND optionsList
