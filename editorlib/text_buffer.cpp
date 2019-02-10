@@ -36,6 +36,7 @@ void TextBuffer::loadFile(const std::string& fileName) {
 }
 
 int TextBuffer::getNumberOfLines() const {
+    ZASSERT(!lines.empty());
     return static_cast<int>(lines.size());
 }
 
@@ -73,7 +74,7 @@ std::string TextBuffer::getLineRange(int row, int colStart, int colEnd) const {
 
 Position TextBuffer::insertText(Position position, const std::string& text) {
     position = clampPosition(position);
-    bool linePastEnd = position.row > static_cast<int>(lines.size());
+    bool linePastEnd = position.row >= static_cast<int>(lines.size());
 
     auto lineParts = splitString(text, '\n');
 
@@ -164,8 +165,10 @@ std::string TextBuffer::deleteText(Position startPosition, Position endPosition)
 }
 
 Position TextBuffer::clampPosition(Position position) const {
+    ZASSERT(!lines.empty());
+
     position.row = std::max(position.row, 0);
-    position.row = std::min(position.row, getNumberOfLines());
+    position.row = std::min(position.row, getNumberOfLines() - 1);
 
     auto lineLength = lines.empty() ? 0 : static_cast<int>(lines[position.row].size());
 

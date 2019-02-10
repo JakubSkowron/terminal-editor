@@ -7,6 +7,13 @@
 
 using namespace terminal_editor;
 
+TEST_CASE("Empty text buffer", "[text-buffer]") {
+    SECTION("Empty buffer has one line.") {
+        TextBuffer textBuffer;
+        REQUIRE(textBuffer.getNumberOfLines() == 1);
+    }
+}
+
 TEST_CASE("Loading files works", "[text-buffer]") {
     SECTION("empty.txt") {
         TextBuffer textBuffer;
@@ -58,6 +65,15 @@ TEST_CASE("Text insertion works", "[text-buffer]") {
         REQUIRE(textBuffer.getNumberOfLines() == 2);
         REQUIRE(textBuffer.getLine(0) == "Ala has a cat.");
         REQUIRE(textBuffer.getLine(1) == "And a dog dude!");
+    }
+
+    SECTION("Insert text into empty buffer.") {
+        TextBuffer textBuffer;
+        REQUIRE(textBuffer.insertText({5, 5}, "Ala\nma") == Position{1, 2});
+
+        REQUIRE(textBuffer.getNumberOfLines() == 2);
+        REQUIRE(textBuffer.getLine(0) == "Ala");
+        REQUIRE(textBuffer.getLine(1) == "ma");
     }
 
     SECTION("Insert text on line start.") {
@@ -150,6 +166,13 @@ TEST_CASE("Text search works", "[text-buffer]") {
 }
 
 TEST_CASE("Text deletion works", "[text-buffer]") {
+    SECTION("Delete text from empty buffer.") {
+        TextBuffer textBuffer;
+        REQUIRE(textBuffer.deleteText({5, 5}, {100, 100}) == "");
+
+        REQUIRE(textBuffer.getNumberOfLines() == 1);
+    }
+
     SECTION("Delete empty range.") {
         TextBuffer textBuffer;
         textBuffer.loadFile("test-data/four-lines-and-lf.txt");
