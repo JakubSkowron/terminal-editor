@@ -44,4 +44,5 @@
 2. nlohmann/json by Niels Lohmann (MIT license).
 3. wcwidth by Markus Kuhn (custom license).
 4. GSL by Microsoft (MIT license).
-5. optional by Simon Brnad (CC0 license).
+5. optional by Simon Brand (CC0 license).
+6. expected by Simon Brand (CC0 license).
