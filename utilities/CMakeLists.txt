@@ -6,6 +6,7 @@ set(LIB_SOURCES
     zerrors.h
     zlogging.h
     zpreprocessor.h
+    zstr.h
     file_utilities.h
     file_utilities.cpp
     )
