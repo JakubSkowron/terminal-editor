@@ -16,6 +16,7 @@
 #include <string>
 #include <sstream>
 #include <thread>
+#include <iostream>
 
 using namespace terminal;
 
@@ -69,8 +70,8 @@ int main() {
 
         WindowManager windowManager;
         auto rootWindow = windowManager.getRootWindow();
-
-        auto mainBox = messageBox(rootWindow, "Press Ctrl-Q to exit.");
+        auto editorWindow = rootWindow->addChild<EditorWindow>("Editor", Rect{}, true, Attributes{Color::White, Color::Blue, Style::Normal});
+        windowManager.setFocusedWindow(editorWindow);
 
         auto redraw = [&screenBuffer, &line_buffer, &rootWindow]() {
             screenBuffer.clear(Color::Bright_White);
@@ -106,6 +107,8 @@ int main() {
 
                 auto action = getActionForEvent("global", e, terminal_editor::getEditorConfig());
                 if (action) {
+                    push_line(*action);
+
                     auto focusedWindow = windowManager.getFocusedWindow();
                     auto activeWindow = focusedWindow.value_or(rootWindow);
                     if (activeWindow->processAction(*action))
@@ -120,12 +123,8 @@ int main() {
                         }
                     }
 
-                    if (*action == "kill-box") {
-                        auto children = rootWindow->children();
-                        if (children.size() > 1) {
-                            auto child = rootWindow->removeChild(children[1]);
-                            child.release();
-                        }
+                    if (*action == "load") {
+                        editorWindow->loadFile("text.txt");
                     }
 
                     if (*action == "quit") {
@@ -133,6 +132,8 @@ int main() {
                         redraw();
                         screenBuffer.present();
                         std::this_thread::sleep_for(1s);
+
+                        //std::cout << "Bye." << std::endl;
                         return 0;
                     }
                 }
@@ -150,9 +151,11 @@ int main() {
                     if (keyEvent->wasCtrlHeld()) {
                         key = "Ctrl-";
                     }
-                    key += keyEvent->getUtf8();
+                    key += keyEvent->getUtf8(true);
                     key += " (" + std::to_string(keyEvent->codePoint) + ")";
                     push_line(key);
+
+                    editorWindow->processTextInput(keyEvent->getUtf8(false));
                 }
                 else
                 if (auto windowSize = std::get_if<WindowSize>(&e)) {
@@ -161,9 +164,9 @@ int main() {
                     }
                     rootWindow->setRect({{0, 0}, Size{windowSize->width, windowSize->height}});
                     auto rect = rootWindow->getRect();
-                    rect.move(rect.size / 4);
-                    rect.size /= 2;
-                    mainBox->setRect(rect);
+                    rect.topLeft += Size{rect.size.width / 2, 1};
+                    rect.size = Size{rect.size.width / 2 - 1, rect.size.height - 2};
+                    editorWindow->setRect(rect);
                 }
                 else
                 if (auto esc = std::get_if<Esc>(&e)) {

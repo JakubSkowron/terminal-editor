@@ -1,6 +1,7 @@
 #pragma once
 
 #include "zerrors.h"
+#include "text_buffer.h"
 #include "text_parser.h"
 #include "text_renderer.h"
 #include "screen_buffer.h"
@@ -41,7 +42,16 @@ public:
     void close();
 
     /// Adds given window to children of this window.
-    void addChild(std::unique_ptr<Window> child) {
+    /// Returns added window.
+    template<typename WindowType, typename... Args>
+    WindowType* addChild(Args&&... args) {
+        return addChild(std::make_unique<WindowType>(getWindowManager(), std::forward<Args>(args)...));
+    }
+
+    /// Adds given window to children of this window.
+    /// Returns added window.
+    template<typename WindowType>
+    WindowType* addChild(std::unique_ptr<WindowType> child) {
         ZASSERT(child != nullptr) << "Window to add must not be null.";
         ZASSERT(child->m_parent == nullptr);
 
@@ -51,15 +61,17 @@ public:
 
         // Make child position relative to parent.
         childPtr->getRect().move(-getScreenRect().topLeft.asSize());
+        return childPtr;
     }
 
     /// Removes given window from children of this window.
     /// Removed window must be a child of this window.
-    std::unique_ptr<Window> removeChild(Window* child) {
+    template<typename WindowType>
+    std::unique_ptr<WindowType> removeChild(WindowType* child) {
         ZASSERT(child) << "Window to remove is null.";
         ZASSERT(child->m_parent == this) << "Window to remove must be child of this window.";
 
-        auto position = std::find_if(m_children.begin(), m_children.end(), [child](const auto& ptr) { return ptr.get() == child; });
+        auto position = std::find_if(m_children.begin(), m_children.end(), [child](const auto& ptr) { return ptr.get() == static_cast<Window*>(child); });
         ZASSERT(position != m_children.end());
 
         auto childPtr = std::move(*position);
@@ -70,7 +82,8 @@ public:
 
         m_children.erase(position);
 
-        return childPtr;
+        childPtr.release();
+        return std::unique_ptr<WindowType>(child);
     }
 
     /// Returns range of this window's children.
@@ -130,6 +143,27 @@ public:
         }
     }
 
+    /// @param text     Valid UTF-8 string input.
+    bool processTextInput(const std::string& text) {
+        if (m_parent) {
+            if (m_parent->preProcessTextInput(text))
+                return true;
+        }
+
+        if (preProcessTextInput(text))
+            return true;
+
+        if (doProcessTextInput(text))
+            return true;
+
+        if (m_parent) {
+            if (m_parent->doProcessTextInput(text))
+                return true;
+        }
+
+        return false;
+    }
+
     bool processAction(const std::string& action) {
         if (m_parent) {
             if (m_parent->preProcessAction(action))
@@ -161,9 +195,20 @@ protected:
     }
 
     virtual bool doProcessAction(const std::string& action);
+
+    virtual bool preProcessTextInput(const std::string& text) {
+        ZUNUSED(text);
+        return false;
+    }
+
+    virtual bool doProcessTextInput(const std::string& text) {
+        ZUNUSED(text);
+        return false;
+    }
 };
 
 /// BasicWindow draws itself as a rectangle, and can be moved and resized.
+/// It also displays a message in it's center.
 class BasicWindow : public Window {
     bool m_doubleEdge;
     Attributes m_attributes;
@@ -186,6 +231,40 @@ private:
 
 protected:
     bool doProcessAction(const std::string& action) override;
+};
+
+/// EditorWindow displays multiline text and allows for it's editing.
+class EditorWindow : public Window {
+    bool m_doubleEdge;
+    Attributes m_attributes;
+
+    terminal_editor::Position m_virtualCursorPosition;  ///< Position of the cursor, that doesn't have column clamped to line length nor grapheme boundaries.
+    terminal_editor::Position m_editCursorPosition;     ///< Position of the cursor, with column column clamped to line length and grapheme boundaries.
+    Point m_topLeftPosition;                            ///< Position of the top-left corner of the window inside the text.
+    terminal_editor::TextBuffer m_textBuffer;
+
+public:
+    EditorWindow(WindowManager* windowManager, const std::string& name, Rect rect, bool doubleEdge, Attributes attributes)
+        : Window(windowManager, name, rect)
+        , m_doubleEdge(doubleEdge)
+        , m_attributes(attributes)
+    {}
+
+    void loadFile(const std::string& fileName) {
+        return m_textBuffer.loadFile(fileName);
+    }
+
+private:
+    /// Updates m_topLeftPosition to make m_editCursorPosition visible.
+    void updateViewPosition();
+
+private:
+    void drawSelf(ScreenCanvas& windowCanvas) override;
+
+protected:
+    bool doProcessAction(const std::string& action) override;
+
+    bool doProcessTextInput(const std::string& text) override;
 };
 
 class WindowManager {
