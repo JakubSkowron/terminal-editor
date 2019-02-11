@@ -51,7 +51,7 @@ void from_json(const nlohmann::json& json, KeyMap::CsiSequence& csi) {
 
     auto finalByte = json["final"].get<std::string>();
     ZASSERT(finalByte.size() == 1) << "CSI finalByte must be one character.";
-    ZASSERT((finalByte[0] >= 0x40) && (finalByte[0] <= 0x7E)) << "CSI final byte must be one of: @A–Z[\\]^_`a–z{|}~";
+    ZASSERT((finalByte[0] >= 0x40) && (finalByte[0] <= 0x7E)) << "CSI final byte must be one of: @A-Z[\\]^_`a-z{|}~";
 
     csi.finalByte = finalByte[0];
 }
