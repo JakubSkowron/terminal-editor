@@ -12,16 +12,26 @@ struct KeyMap {
     std::string name;                 ///< Name of this KeyMap.
     tl::optional<std::string> parent; ///< Parent map.
 
+    // @todo Extend to all mouse events.
     enum class MouseButton {
-        Left,   ///< Left mouse button.
-        Right,  ///< Right mouse button.
-        Middle, ///< Middle mouse button
+        Left = 0,   ///< Left mouse button.
+        Middle = 1, ///< Middle mouse button
+        Right = 2,  ///< Right mouse button.
+    };
+
+    struct CsiSequence {
+        std::vector<int> params;    ///< Parameters of the CSI sequence.
+        char finalByte;             ///< Final byte of the CSI sequence.
     };
 
     struct KeyBinding {
         tl::optional<std::string> key;         ///< UTF-8 key that should pressed.
+        bool ctrl;                             ///< True if Control should also be pressed (used only for keys).
+
         tl::optional<MouseButton> mouseButton; ///< Mouse button that should be pressed.
-        bool ctrl;                             ///< True if Control should also be pressed.
+
+        tl::optional<CsiSequence> csi;         ///< CSI sequence that is mapped.
+
         std::string action;                    ///< Action for this shortcut.
     };
 

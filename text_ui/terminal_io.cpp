@@ -7,6 +7,7 @@
 #include "zlogging.h"
 #include "zstr.h"
 #include "text_parser.h"
+#include "text_buffer.h"
 
 #include <tl/expected.hpp>
 
@@ -32,11 +33,6 @@ int mouseX = 0;
 int mouseY = 0;
 
 tl::optional<std::string> getActionForEvent(const std::string& contextName, const Event& event, const terminal_editor::EditorConfig& editorConfig) {
-    // Currently we support only keyboard shortcuts.
-    const KeyPressed* keyEvent = std::get_if<KeyPressed>(&event);
-    if (keyEvent == nullptr)
-        return tl::nullopt;
-
     // Check if there is a key map for current context. Fallback to "global" if not found.
     const terminal_editor::KeyMap* keyMap = nullptr;
     if (editorConfig.keyMaps.count(contextName) > 0) {
@@ -49,18 +45,90 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
         return tl::nullopt;
     }
 
-    auto findAction = [&keyEvent](const terminal_editor::KeyMap& keyMap) -> tl::optional<std::string> {
+    // Currently we support only keyboard shortcuts, mouse events, and CSI escape sequences (in a limited way).
+
+    const KeyPressed* keyEvent = std::get_if<KeyPressed>(&event);
+    const MouseEvent* mouseEvent = std::get_if<MouseEvent>(&event);
+    const Esc* esc = std::get_if<Esc>(&event);
+
+    if ((keyEvent == nullptr) && (mouseEvent == nullptr) && (esc == nullptr))
+        return tl::nullopt;
+
+    auto matchesKey = [&keyEvent](const terminal_editor::KeyMap::KeyBinding& binding) {
+        if (keyEvent == nullptr)
+            return false;
+
+        if (binding.ctrl != keyEvent->wasCtrlHeld())
+            return false;
+
+        if (binding.key != keyEvent->getUtf8(true))
+            return false;
+
+        return true;
+    };
+
+    auto matchesMouse = [&mouseEvent](const terminal_editor::KeyMap::KeyBinding& binding) {
+        if (mouseEvent == nullptr)
+            return false;
+
+        if (!binding.mouseButton)
+            return false;
+
+        if (static_cast<int>(*binding.mouseButton) != static_cast<int>(mouseEvent->kind))
+            return false;
+
+        return true;
+    };
+
+    const std::regex paramsRegex("(?:([0-9]*)(?:;([0-9]*))*)?");
+
+    auto matchesCsi = [&esc, &paramsRegex](const terminal_editor::KeyMap::KeyBinding& binding) {
+        if (esc == nullptr)
+            return false;
+
+        if (!binding.csi)
+            return false;
+
+        if (!esc->isCSI())
+            return false;
+
+        if (!esc->csiIntermediateBytes.empty())
+            return false;
+
+        if (binding.csi->finalByte != esc->csiFinalByte)
+            return false;
+
+        std::smatch match;
+        if (!std::regex_match(esc->csiParameterBytes, match, paramsRegex))
+            return false;
+
+        std::vector<std::string> params;
+        if (!esc->csiParameterBytes.empty()) {
+            params = terminal_editor::splitString(esc->csiParameterBytes, ';');
+        }
+        if (binding.csi->params.size() != params.size())
+            return false;
+
+        for (int i = 0; i < binding.csi->params.size(); ++i) {
+            int param = params[i].empty() ? 0 : static_cast<int>(std::strtol(params[i].c_str(), nullptr, 10));
+
+            if (binding.csi->params[i] != param)
+                return false;
+        }
+
+        return true;
+    };
+
+    auto findAction = [&matchesKey, &matchesMouse, &matchesCsi](const terminal_editor::KeyMap& keyMap) -> tl::optional<std::string> {
         for (const auto& binding : keyMap.bindings) {
-            if (binding.mouseButton)
-                continue;
+            if (matchesKey(binding))
+                return binding.action;
 
-            if (binding.ctrl != keyEvent->wasCtrlHeld())
-                continue;
+            if (matchesMouse(binding))
+                return binding.action;
 
-            if (binding.key != keyEvent->getUtf8())
-                continue;
-
-            return binding.action;
+            if (matchesCsi(binding))
+                return binding.action;
         }
 
         return tl::nullopt;
@@ -286,7 +354,7 @@ tl::optional<MouseEvent> extractMouseEvent(const Esc& esc) {
     if ((esc.csiFinalByte != 'M') && (esc.csiFinalByte != 'm'))
         return tl::nullopt;
 
-    const std::regex paramsRegex("<([0-9]+);([0-9]+);([0-9]+)");
+    const std::regex paramsRegex("<([0-9]*);([0-9]*);([0-9]*)");
     std::smatch match;
     if (!std::regex_match(esc.csiParameterBytes, match, paramsRegex))
         return tl::nullopt;
@@ -294,6 +362,9 @@ tl::optional<MouseEvent> extractMouseEvent(const Esc& esc) {
     auto codeMatch = match[1].str();
     auto xMatch = match[2].str();
     auto yMatch = match[3].str();
+    if (codeMatch.empty()) codeMatch = "0";
+    if (xMatch.empty()) xMatch = "0";
+    if (yMatch.empty()) yMatch = "0";
     int code = static_cast<int>(std::strtol(codeMatch.c_str(), nullptr, 10));
     int x = static_cast<int>(std::strtol(xMatch.c_str(), nullptr, 10));
     int y = static_cast<int>(std::strtol(yMatch.c_str(), nullptr, 10));

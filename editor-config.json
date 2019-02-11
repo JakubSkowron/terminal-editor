@@ -5,40 +5,73 @@
             "name": "global",
             "bindings": [
                 {
+                    "key": "M",
+                    "ctrl": true,
+                    "action": "enter"
+                },
+                {
+                    "key": "Q",
+                    "ctrl": true,
+                    "action": "quit"
+                },
+                {
                     "key": "A",
                     "action": "Big Action!"
                 },
                 {
-                    "key": "b",
+                    "key": "B",
+                    "ctrl": true,
                     "action": "box"
                 },
                 {
-                    "key": "c",
+                    "key": "C",
+                    "ctrl": true,
                     "action": "close"
                 },
                 {
-                    "key": "k",
-                    "action": "kill-box"
+                    "key": "L",
+                    "ctrl": true,
+                    "action": "load"
                 },
                 {
-                    "key": "q",
-                    "action": "quit"
-                },
-                {
-                    "key": "w",
+                    "csi": { "final": "A" },
                     "action": "up"
                 },
                 {
-                    "key": "s",
+                    "csi": { "final": "B" },
                     "action": "down"
                 },
                 {
-                    "key": "a",
+                    "csi": { "final": "D" },
                     "action": "left"
                 },
                 {
-                    "key": "d",
+                    "csi": { "final": "C" },
                     "action": "right"
+                },
+                {
+                    "csi": { "final": "H" },
+                    "action": "home"
+                },
+                {
+                    "csi": { "final": "F" },
+                    "action": "end"
+                },
+                {
+                    "csi": { "params": [ 5 ], "final": "~" },
+                    "action": "page-up"
+                },
+                {
+                    "csi": { "params": [ 6 ], "final": "~" },
+                    "action": "page-down"
+                },
+                {
+                    "csi": { "params": [ 5, 5 ], "final": "~" },
+                    "action": "ctrl-page-up"
+                },
+                {
+                    "csi": { "params": [ 6, 5 ], "final": "~" },
+                    "action": "ctrl-page-down"
                 },
                 {
                     "key": "W",
@@ -59,6 +92,14 @@
                     "key": "D",
                     "ctrl": true,
                     "action": "size-right"
+                },
+                {
+                    "csi": { "params": [ 3 ], "final": "~" },
+                    "action": "text-delete"
+                },
+                {
+                    "key": "\u007F",
+                    "action": "text-backspace"
                 }
             ]
         }

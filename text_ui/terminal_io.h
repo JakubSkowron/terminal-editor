@@ -74,8 +74,8 @@ struct KeyPressed {
     }
 
     /// Returns unicode character that was input, in UTF-8 encoding.
-    /// If CTRL was held, returns reconstructed character.
-    std::string getUtf8() const {
+    /// @param reconstructCtrlChar  If true and CTRL was held, returns reconstructed character.
+    std::string getUtf8(bool reconstructCtrlChar) const {
         std::string result;
 
         if (codePoint > 0x7F) {
@@ -90,7 +90,7 @@ struct KeyPressed {
 
         // Ctrl key strips high 3 bits from character on input
         // Use key | 0x40 to get 'A' from 1
-        terminal_editor::appendCodePoint(result, codePoint | 0x40);
+        terminal_editor::appendCodePoint(result, reconstructCtrlChar ? (codePoint | 0x40) : codePoint);
         return result;
     }
 
@@ -138,6 +138,8 @@ struct MouseEvent {
         LMBDrag = 32,
         MMBDrag = 33,
         RMBDrag = 34,
+        WheelDown = 64,
+        WheelUp = 65,
     };
     Kind kind;
     Point position;
@@ -152,6 +154,8 @@ inline std::ostream& operator<<(std::ostream& os, MouseEvent::Kind kind) {
     case MouseEvent::Kind::LMBDrag: return os << "LMBDrag";
     case MouseEvent::Kind::MMBDrag: return os << "MMBDrag";
     case MouseEvent::Kind::RMBDrag: return os << "RMBDrag";
+    case MouseEvent::Kind::WheelDown: return os << "WheelDown";
+    case MouseEvent::Kind::WheelUp: return os << "WheelUp";
     default:
         return os << "Unknown mouse event: " << static_cast<int>(kind);
     }
