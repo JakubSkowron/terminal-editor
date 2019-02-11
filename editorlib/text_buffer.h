@@ -5,6 +5,7 @@
 
 #include <string>
 #include <vector>
+#include <iostream>
 
 namespace terminal_editor {
 
@@ -46,6 +47,10 @@ struct Position {
     friend bool operator>=(Position position0, Position position1) {
         return (position0 > position1) || (position0 == position1);
     }
+
+    friend std::ostream& operator<<(std::ostream& os, Position position) {
+        return os << "Position{" << position.row << ", " << position.column << "}";
+    }
 };
 
 /// This class is an editable container of lines of text.
@@ -54,9 +59,14 @@ struct Position {
 /// @note This is a very straighforward implementation. It is not efficient.
 class TextBuffer {
 private:
-    std::vector<std::string> lines;
+    std::vector<std::string> lines; ///< Will always have at least one line.
 
 public:
+    TextBuffer()
+        : lines(1)
+    {
+    }
+
     /// Empty virtual destructor.
     virtual ~TextBuffer() {
     }
@@ -104,7 +114,7 @@ public:
     /// Clamps position to a valid range, so:
     /// - row is clamped to range from 0 to number of lines (inclusive),
     /// - column is clamped to range from 0 to line length (inclusive).
-    //[[nodiscard]] - C++ 17
+    [[nodiscard]]
     Position clampPosition(Position position) const;
 
     /// Returns position where given text is located.

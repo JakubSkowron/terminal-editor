@@ -36,6 +36,26 @@ bool hasKey(const nlohmann::json& j, const std::string& key) {
     return j.find(key) != j.end();
 }
 
+/// Serializes CsiSequence to json.
+void to_json(nlohmann::json& json, const KeyMap::CsiSequence& csi) {
+    if (!csi.params.empty())
+        json["params"] = csi.params;
+    json["final"] = csi.finalByte;
+}
+
+/// Deserializes CsiSequence from json.
+void from_json(const nlohmann::json& json, KeyMap::CsiSequence& csi) {
+    csi.params.clear();
+    if (hasKey(json, "params"))
+        json["params"].get_to(csi.params);
+
+    auto finalByte = json["final"].get<std::string>();
+    ZASSERT(finalByte.size() == 1) << "CSI finalByte must be one character.";
+    ZASSERT((finalByte[0] >= 0x40) && (finalByte[0] <= 0x7E)) << "CSI final byte must be one of: @A–Z[\\]^_`a–z{|}~";
+
+    csi.finalByte = finalByte[0];
+}
+
 /// Serializes KeyBinding to json.
 void to_json(nlohmann::json& json, const KeyMap::KeyBinding& keyBinding) {
     if (keyBinding.key) {
@@ -43,6 +63,9 @@ void to_json(nlohmann::json& json, const KeyMap::KeyBinding& keyBinding) {
     }
     if (keyBinding.mouseButton) {
         json["mouseButton"] = to_string(*keyBinding.mouseButton);
+    }
+    if (keyBinding.csi) {
+        json["csi"] = *keyBinding.csi;
     }
     json["ctrl"] = keyBinding.ctrl;
     json["action"] = keyBinding.action;
@@ -57,6 +80,9 @@ void from_json(const nlohmann::json& json, KeyMap::KeyBinding& keyBinding) {
     keyBinding.mouseButton = tl::nullopt;
     if (hasKey(json, "mouseButton"))
         keyBinding.mouseButton = from_string<KeyMap::MouseButton>(json["mouseButton"].get<std::string>());
+
+    if (hasKey(json, "csi"))
+        keyBinding.csi = json["csi"].get<KeyMap::CsiSequence>();
 
     keyBinding.ctrl = json.value("ctrl", false);
     keyBinding.action = json["action"].get<std::string>();
