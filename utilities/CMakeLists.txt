@@ -9,6 +9,8 @@ set(LIB_SOURCES
     zstr.h
     file_utilities.h
     file_utilities.cpp
+
+    NatvisFile.natvis
     )
 
 add_library(${LIB_NAME} ${LIB_SOURCES})
