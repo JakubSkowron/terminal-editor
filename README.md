@@ -46,3 +46,11 @@
 4. GSL by Microsoft (MIT license).
 5. optional by Simon Brand (CC0 license).
 6. expected by Simon Brand (CC0 license).
+
+# Downloading submodules
+
+```sh
+git pull
+git submodule init
+git submodule update
+```
