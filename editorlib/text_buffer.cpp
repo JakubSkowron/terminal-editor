@@ -43,8 +43,7 @@ int TextBuffer::getNumberOfLines() const {
 int TextBuffer::getLongestLineLength() const {
     // @todo This is a stub implementation.
     auto longestPos = std::max_element(lines.begin(), lines.end(), [](const auto& text0, const auto& text1) { return text0.size() < text1.size(); });
-    if (longestPos == lines.end())
-        return 0;
+    ZASSERT(longestPos != lines.end());
     return static_cast<int>(longestPos->size());
 }
 

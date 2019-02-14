@@ -79,8 +79,7 @@ public:
     /// @note It will always be 1 + number of LF's in file.
     int getNumberOfLines() const;
 
-    /// Returns length of the longest line.
-    /// If there are no lines in buffer returns 0.
+    /// Returns length of the longest line in bytes.
     int getLongestLineLength() const;
 
     /// Returns contents of given line.
