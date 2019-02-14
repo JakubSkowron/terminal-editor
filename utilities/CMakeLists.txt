@@ -10,6 +10,8 @@ set(LIB_SOURCES
     file_utilities.h
     file_utilities.cpp
 
+    geometry.h
+
     NatvisFile.natvis
     )
 

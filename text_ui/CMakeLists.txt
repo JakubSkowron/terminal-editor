@@ -17,13 +17,11 @@ set(LIB_SOURCES
 
     window.h
     window.cpp
-
-    geometry.h
     )
 
 add_library(${LIB_NAME} ${LIB_SOURCES})
 target_include_directories(${LIB_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_include_directories(${LIB_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/third_party/tl")
-target_link_libraries(${LIB_NAME} PRIVATE terminal-editor-library)
+target_link_libraries(${LIB_NAME} PUBLIC utilities terminal-editor-library)
 SetCompilerOptions(${LIB_NAME})
 
