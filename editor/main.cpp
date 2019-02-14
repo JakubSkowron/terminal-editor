@@ -97,11 +97,13 @@ int main() {
             redraw();
             screenBuffer.present();
 
+            auto block = true;
             while (true) {
                 // Process all events from the queue.
-                auto event = event_queue.poll(false);
+                auto event = event_queue.poll(block);
                 if (!event)
                     break;
+                block = false;
 
                 auto e = *event;
 
