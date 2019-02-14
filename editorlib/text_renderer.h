@@ -53,4 +53,8 @@ std::string renderGraphemes(gsl::span<const Grapheme> graphemes, bool useBracket
 /// @param text     UTF-8 string, can be invalid.
 int getRenderedWidth(gsl::span<const char> text);
 
+/// Returns width of given line of graphemes after rendering on screen.
+/// @param graphemes    A span of graphemes.
+int getRenderedWidth(gsl::span<Grapheme> graphemes);
+
 } // namespace terminal_editor
