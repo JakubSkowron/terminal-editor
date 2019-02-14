@@ -58,6 +58,14 @@
                     "action": "end"
                 },
                 {
+                    "csi": { "params": [ 1 ], "final": "~" },
+                    "action": "home"
+                },
+                {
+                    "csi": { "params": [ 4 ], "final": "~" },
+                    "action": "end"
+                },
+                {
                     "csi": { "params": [ 5 ], "final": "~" },
                     "action": "page-up"
                 },
