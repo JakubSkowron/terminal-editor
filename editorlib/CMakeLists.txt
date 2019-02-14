@@ -31,5 +31,5 @@ target_include_directories(${LIB_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/third_party/g
 target_include_directories(${LIB_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/third_party/mk_wcswidth")
 target_include_directories(${LIB_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/third_party/tl")
 target_include_directories(${LIB_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/third_party/nlohmann-json-3.4.0")
-target_link_libraries(${LIB_NAME} PUBLIC utilities)
+target_link_libraries(${LIB_NAME} PUBLIC utilities Threads::Threads)
 SetCompilerOptions(${LIB_NAME})

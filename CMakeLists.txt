@@ -9,6 +9,9 @@ option(ENABLE_ADDRESS_SANITIZER "Enables address sanitizer")
 cmake_dependent_option(ENABLE_THREAD_SANITIZER "Enables thread sanitizer (can't be used with address sanitizer)" OFF "NOT ENABLE_ADDRESS_SANITIZER" OFF)
 option(ENABLE_UB_SANITIZER "Enables undefined behaviour sanitizer (also in release, with minimal runtime)")
 
+set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+find_package(Threads REQUIRED)
+
 if(MSVC)
 else()
     if(ENABLE_ADDRESS_SANITIZER)

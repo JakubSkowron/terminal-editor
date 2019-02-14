@@ -7,8 +7,7 @@ set(APP_SOURCES
     )
 
 add_executable(${APP_NAME} ${APP_SOURCES})
-find_package(Threads)
-target_link_libraries(${APP_NAME} PRIVATE terminal-editor-library text_ui ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(${APP_NAME} PRIVATE terminal-editor-library text_ui Threads::Threads)
 SetCompilerOptions(${APP_NAME})
 
 if(WIN32)
