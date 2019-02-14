@@ -43,7 +43,7 @@ std::string renderFile(const std::string& fileName) {
         auto line = textBuffer.getLine(i);
         auto codePointInfos = parseLine(line);
         auto graphemes = renderLine(codePointInfos);
-        auto rendered = renderGraphemes(graphemes);
+        auto rendered = renderGraphemes(graphemes, true);
         if (i > 0)
             ss << "\n";
         ss << rendered;

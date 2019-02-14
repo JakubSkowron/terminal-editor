@@ -120,12 +120,68 @@ void EditorWindow::drawSelf(ScreenCanvas& windowCanvas) {
         textCanvas.print(Point{-m_topLeftPosition.x, i}, line, m_attributes, m_attributes, m_attributes);
     }
 
-    // Print cursor.
-    auto textUnderCursor = m_textBuffer.getLineRange(m_editCursorPosition.row, m_editCursorPosition.column, m_editCursorPosition.column + 1);
+    // Print cursor. We don't highlight whole grapheme under cursor intentionally. This could change though.
+    auto line = m_textBuffer.getLine(m_editCursorPosition.y);
+    auto codePointInfos = terminal_editor::parseLine(line);
+    auto graphemes = terminal_editor::renderLine(codePointInfos);
+    auto renderedLine = renderGraphemes(graphemes, false);
+
+    // Parse again to separate replacements into individual characters.
+    auto codePointInfos2 = terminal_editor::parseLine(renderedLine);
+    auto graphemes2 = terminal_editor::renderLine(codePointInfos2);
+    std::string textUnderCursor;
+    int x = 0;
+    for (const auto& grapheme : graphemes2) {
+        x += grapheme.width;
+
+        if (x > m_editCursorPosition.x) {
+            textUnderCursor = grapheme.rendered;
+            break;
+        }
+    }
+
     if (textUnderCursor.empty())
-        textUnderCursor = "_";
+        textUnderCursor = " ";
     Attributes cursorAttributes = { m_attributes.bgColor, m_attributes.fgColor, Style::Bold };
-    textCanvas.print(Point{m_editCursorPosition.column, m_editCursorPosition.row} - m_topLeftPosition.asSize(), textUnderCursor, cursorAttributes, cursorAttributes, cursorAttributes);
+    textCanvas.print(m_editCursorPosition - m_topLeftPosition.asSize(), textUnderCursor, cursorAttributes, cursorAttributes, cursorAttributes);
+}
+
+/// Returns rendered position that is equivalent to given text bufer position.
+/// @note Rows out of text buffer range are treated as empty.
+Point positionToPoint(const terminal_editor::TextBuffer& textBuffer, terminal_editor::Position position) {
+    auto linePrefix = textBuffer.getLineRange(position.row, 0, position.column);
+    auto width = terminal_editor::getRenderedWidth(linePrefix);
+    return Point { width, position.row };
+}
+
+/// Returns text bufer position that is equivalent to given rendered position.
+/// @note Rows out of text buffer range are treated as empty.
+terminal_editor::Position pointToPosition(const terminal_editor::TextBuffer& textBuffer, Point point) {
+    if (point.x == 0) {
+        return terminal_editor::Position{point.y, point.x};
+    }
+
+    auto line = textBuffer.getLineRange(point.y, 0, std::numeric_limits<int>::max());
+    auto codePointInfos = terminal_editor::parseLine(line);
+    auto graphemes = terminal_editor::renderLine(codePointInfos);
+    int x = 0;
+    int length = 0;
+    for (const auto& grapheme : graphemes) {
+        length += static_cast<int>(grapheme.consumedInput.size());
+        x += grapheme.width;
+
+        if (x >= point.x)
+            break;
+    }
+
+    return terminal_editor::Position{point.y, length};
+}
+
+Point clampPointToGraphemes(const terminal_editor::TextBuffer& textBuffer, Point point) {
+    auto position = pointToPosition(textBuffer, point);
+    position = textBuffer.clampPosition(position);
+    auto clampedPoint = positionToPoint(textBuffer, position);
+    return clampedPoint;
 }
 
 /// Move cursor by given number of columns, wrapping at end and beginning of lines.
@@ -176,16 +232,65 @@ terminal_editor::Position moveCursorColumn(const terminal_editor::TextBuffer& te
 }
 
 
-void EditorWindow::updateViewPosition() {
-
+/// Move cursor by given number of columns, wrapping at end and beginning of lines.
+/// @note Such a general function is a bit overkill, since moving by one column or one row at a time is only needed.
+[[nodiscard]]
+Point moveCursorColumn(const terminal_editor::TextBuffer& textBuffer, Point point, int columnDelta) {
+    auto position = pointToPosition(textBuffer, point);
+    auto newPosition = moveCursorColumn(textBuffer, position, columnDelta);
+    auto newPoint = positionToPoint(textBuffer, newPosition);
+    return newPoint;
 }
 
+void EditorWindow::updateViewPosition() {
+    // Build rectangle of text visible in the window.
+    auto rect = getRect();
+    rect.topLeft += Size(1, 1);
+    rect.size -= Size(2, 2);
+    rect.topLeft = m_topLeftPosition;
+
+    if (rect.isEmpty())
+        return;
+
+    if (rect.contains(m_editCursorPosition))
+        return;
+
+    auto showRow = [&rect](int row) {
+        if (row < rect.topLeft.y) {
+            rect.move(Size{0, row - rect.topLeft.y});
+        }
+        if (row >= rect.bottomRight().y) {
+            rect.move(Size{0, row - rect.bottomRight().y + 1});
+        }
+    };
+
+    auto showColumn = [&rect](int column) {
+        if (column < rect.topLeft.x) {
+            rect.move(Size{column - rect.topLeft.x, 0});
+        }
+        if (column >= rect.bottomRight().x) {
+            rect.move(Size{column - rect.bottomRight().x + 1, 0});
+        }
+    };
+
+    // First show row.
+    showRow(m_editCursorPosition.y);
+
+    // Now show begining of the line.
+    //showColumn(0);
+
+    // Now show actual cursor position.
+    showColumn(m_editCursorPosition.x);
+
+    m_topLeftPosition = rect.topLeft;
+}
 
 bool EditorWindow::doProcessAction(const std::string& action) {
     if (action == "page-up") {
         // @note Virtual position will become concrete.
-        m_virtualCursorPosition = terminal_editor::Position{0, 0};
-        m_editCursorPosition = m_virtualCursorPosition;
+        m_editCursorPosition.y -= getRect().size.height - 2 - 1;
+        m_editCursorPosition = clampPointToGraphemes(m_textBuffer, m_editCursorPosition);
+        m_virtualCursorPosition = m_editCursorPosition;
 
         updateViewPosition();
         return true;
@@ -193,9 +298,9 @@ bool EditorWindow::doProcessAction(const std::string& action) {
 
     if (action == "page-down") {
         // @note Virtual position will become concrete.
-        m_virtualCursorPosition = terminal_editor::Position{std::numeric_limits<int>::max(), std::numeric_limits<int>::max()};
-        m_virtualCursorPosition = m_textBuffer.clampPosition(m_virtualCursorPosition);
-        m_editCursorPosition = m_virtualCursorPosition;
+        m_editCursorPosition.y += getRect().size.height - 2 - 1;
+        m_editCursorPosition = clampPointToGraphemes(m_textBuffer, m_editCursorPosition);
+        m_virtualCursorPosition = m_editCursorPosition;
 
         updateViewPosition();
         return true;
@@ -203,8 +308,8 @@ bool EditorWindow::doProcessAction(const std::string& action) {
 
     if (action == "home") {
         // @note Virtual position will become concrete.
-        m_virtualCursorPosition.column = 0;
-        m_editCursorPosition = m_virtualCursorPosition;
+        m_editCursorPosition.x = 0;
+        m_virtualCursorPosition = m_editCursorPosition;
 
         updateViewPosition();
         return true;
@@ -212,9 +317,9 @@ bool EditorWindow::doProcessAction(const std::string& action) {
 
     if (action == "end") {
         // @note Virtual position will become concrete.
-        m_virtualCursorPosition.column = std::numeric_limits<int>::max();
-        m_virtualCursorPosition = m_textBuffer.clampPosition(m_virtualCursorPosition);
-        m_editCursorPosition = m_virtualCursorPosition;
+        m_editCursorPosition.x = std::numeric_limits<int>::max();
+        m_editCursorPosition = clampPointToGraphemes(m_textBuffer, m_editCursorPosition);
+        m_virtualCursorPosition = m_editCursorPosition;
 
         updateViewPosition();
         return true;
@@ -240,9 +345,9 @@ bool EditorWindow::doProcessAction(const std::string& action) {
 
     if (action == "up") {
         // @note We don't change virtual column here.
-        m_virtualCursorPosition.row -= 1;
-        m_virtualCursorPosition.row = m_textBuffer.clampPosition(m_virtualCursorPosition).row;
-        m_editCursorPosition = m_textBuffer.clampPosition(m_virtualCursorPosition);
+        m_virtualCursorPosition.y -= 1;
+        m_editCursorPosition = clampPointToGraphemes(m_textBuffer, m_virtualCursorPosition);
+        m_virtualCursorPosition.y = m_editCursorPosition.y;
 
         updateViewPosition();
         return true;
@@ -250,32 +355,41 @@ bool EditorWindow::doProcessAction(const std::string& action) {
 
     if (action == "down") {
         // @note We don't change virtual column here.
-        m_virtualCursorPosition.row += 1;
-        m_virtualCursorPosition.row = m_textBuffer.clampPosition(m_virtualCursorPosition).row;
-        m_editCursorPosition = m_textBuffer.clampPosition(m_virtualCursorPosition);
+        m_virtualCursorPosition.y += 1;
+        m_editCursorPosition = clampPointToGraphemes(m_textBuffer, m_virtualCursorPosition);
+        m_virtualCursorPosition.y = m_editCursorPosition.y;
 
         updateViewPosition();
         return true;
     }
 
     if (action == "text-backspace") {
-        // @todo Move by one grapheme.
-        auto startPosition = moveCursorColumn(m_textBuffer, m_editCursorPosition, -1);
-        m_textBuffer.deleteText(startPosition, m_editCursorPosition);
-        m_editCursorPosition = startPosition;
+        // @note Virtual position will become concrete.
+        auto editPosition = pointToPosition(m_textBuffer, m_editCursorPosition);
+        auto startPosition = moveCursorColumn(m_textBuffer, editPosition, -1);
+        m_textBuffer.deleteText(startPosition, editPosition);
+        m_editCursorPosition = positionToPoint(m_textBuffer, startPosition);
         m_virtualCursorPosition = m_editCursorPosition;
+
+        updateViewPosition();
         return true;
     }
 
     if (action == "text-delete") {
-        // @todo Move by one grapheme.
-        auto endPosition = moveCursorColumn(m_textBuffer, m_editCursorPosition, 1);
-        m_textBuffer.deleteText(m_editCursorPosition, endPosition);
+        // @note Virtual position will become concrete.
+        auto editPosition = pointToPosition(m_textBuffer, m_editCursorPosition);
+        auto endPosition = moveCursorColumn(m_textBuffer, editPosition, 1);
+        m_textBuffer.deleteText(editPosition, endPosition);
+        m_virtualCursorPosition = m_editCursorPosition;
+
+        updateViewPosition();
         return true;
     }
 
     if (action == "enter") {
         doProcessTextInput("\n");
+
+        updateViewPosition();
         return true;
     }
 
@@ -303,8 +417,12 @@ bool EditorWindow::doProcessAction(const std::string& action) {
 }
 
 bool EditorWindow::doProcessTextInput(const std::string& text) {
-    m_editCursorPosition = m_textBuffer.insertText(m_editCursorPosition, text);
+    auto position = pointToPosition(m_textBuffer, m_editCursorPosition);
+    auto newPosition = m_textBuffer.insertText(position, text);
+    m_editCursorPosition = positionToPoint(m_textBuffer, newPosition);
     m_virtualCursorPosition = m_editCursorPosition;
+
+    updateViewPosition();
     return true;
 }
 

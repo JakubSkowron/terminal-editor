@@ -122,16 +122,16 @@ std::vector<Grapheme> renderLine(gsl::span<CodePointInfo> codePointInfos) {
     return graphemes;
 }
 
-std::string renderGraphemes(gsl::span<const Grapheme> graphemes) {
+std::string renderGraphemes(gsl::span<const Grapheme> graphemes, bool useBrackets) {
     std::stringstream ss;
     for (const auto& grapheme : graphemes) {
-        if (grapheme.kind != GraphemeKind::NORMAL) {
+        if (useBrackets && (grapheme.kind != GraphemeKind::NORMAL)) {
             ss << "[";
         }
 
         ss << grapheme.rendered;
 
-        if (grapheme.kind != GraphemeKind::NORMAL) {
+        if (useBrackets && (grapheme.kind != GraphemeKind::NORMAL)) {
             ss << "]";
         }
     }

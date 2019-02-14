@@ -44,7 +44,8 @@ std::vector<Grapheme> renderLine(gsl::span<CodePointInfo> codePointInfos);
 
 /// Returns concatenation of rendered property of all graphemes.
 /// @param graphemes    Span of graphemes to concatenate.
-std::string renderGraphemes(gsl::span<const Grapheme> graphemes);
+/// @param useBrackets  If true all invalid and replacement sequences will be enclosed with brackets.
+std::string renderGraphemes(gsl::span<const Grapheme> graphemes, bool useBrackets);
 
 /// Returns width of given text after rendering on screen.
 /// @note This functions takes into consideration replacement strings, and thus differs from wcswidth().

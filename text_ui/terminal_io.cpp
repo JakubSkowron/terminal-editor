@@ -109,7 +109,7 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
         if (binding.csi->params.size() != params.size())
             return false;
 
-        for (int i = 0; i < binding.csi->params.size(); ++i) {
+        for (int i = 0; i < static_cast<int>(binding.csi->params.size()); ++i) {
             int param = params[i].empty() ? 0 : static_cast<int>(std::strtol(params[i].c_str(), nullptr, 10));
 
             if (binding.csi->params[i] != param)
