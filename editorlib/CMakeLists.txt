@@ -12,6 +12,9 @@ set(LIB_SOURCES
     text_renderer.h
     text_renderer.cpp
 
+    grapheme_buffer.h
+    grapheme_buffer.cpp
+
     editor_config.h
     editor_config.cpp
 

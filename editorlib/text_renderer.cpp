@@ -145,7 +145,7 @@ int getRenderedWidth(gsl::span<const char> text) {
     return length;
 }
 
-int getRenderedWidth(gsl::span<Grapheme> graphemes) {
+int getRenderedWidth(gsl::span<const Grapheme> graphemes) {
     auto length = std::accumulate(graphemes.begin(), graphemes.end(), 0, [](int sum, const Grapheme& grapheme) { return sum + grapheme.width; });
     return length;
 }

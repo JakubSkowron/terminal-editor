@@ -55,6 +55,6 @@ int getRenderedWidth(gsl::span<const char> text);
 
 /// Returns width of given line of graphemes after rendering on screen.
 /// @param graphemes    A span of graphemes.
-int getRenderedWidth(gsl::span<Grapheme> graphemes);
+int getRenderedWidth(gsl::span<const Grapheme> graphemes);
 
 } // namespace terminal_editor
