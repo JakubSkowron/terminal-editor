@@ -324,15 +324,19 @@ void ScreenCanvas::rect(Rect rect, bool doubleEdge, bool fill, Attributes attrib
 }
 
 void ScreenCanvas::print(Point pt, const std::string& text, Attributes normal, Attributes invalid, Attributes replacement) {
+    auto codePointInfos = parseLine(text);
+    auto graphemes = renderLine(codePointInfos);
+
+    print(pt, graphemes, normal, invalid, replacement);
+}
+
+void ScreenCanvas::print(Point pt, gsl::span<const Grapheme> graphemes, Attributes normal, Attributes invalid, Attributes replacement) {
     pt += m_origin.asSize(); // pt is in screen coordinates now.
 
     if (pt.y < m_clipRect.topLeft.y)
         return;
     if (pt.y >= m_clipRect.bottomRight().y)
         return;
-
-    auto codePointInfos = parseLine(text);
-    auto graphemes = renderLine(codePointInfos);
 
     int curX = pt.x;
     for (const auto& grapheme : graphemes) {

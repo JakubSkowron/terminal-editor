@@ -73,6 +73,12 @@ public:
     /// So only graphemes fully inside are drawn.
     /// @param text     Input string, doesn't have to be valid or printable UTF-8.
     void print(Point pt, const std::string& text, Attributes normal, Attributes invalid, Attributes replacement);
+
+    /// Draws given text on the canvas.
+    /// Text is clipped to boundaries of the canvas.
+    /// So only graphemes fully inside are drawn.
+    /// @param graphemes    Graphemes to draw.
+    void print(Point pt, gsl::span<const Grapheme> graphemes, Attributes normal, Attributes invalid, Attributes replacement);
 };
 
 class ScreenBuffer {
