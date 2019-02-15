@@ -23,7 +23,7 @@
 #include <windows.h>
 #endif
 
-namespace terminal {
+namespace terminal_editor {
 
 extern int mouseX;
 extern int mouseY;
@@ -79,18 +79,18 @@ struct KeyPressed {
         std::string result;
 
         if (codePoint > 0x7F) {
-            terminal_editor::appendCodePoint(result, codePoint);
+            appendCodePoint(result, codePoint);
             return result;
         }
 
         if (!wasCtrlHeld()) {
-            terminal_editor::appendCodePoint(result, codePoint);
+            appendCodePoint(result, codePoint);
             return result;
         }
 
         // Ctrl key strips high 3 bits from character on input
         // Use key | 0x40 to get 'A' from 1
-        terminal_editor::appendCodePoint(result, reconstructCtrlChar ? (codePoint | 0x40) : codePoint);
+        appendCodePoint(result, reconstructCtrlChar ? (codePoint | 0x40) : codePoint);
         return result;
     }
 
@@ -167,7 +167,7 @@ using Event = std::variant<KeyPressed, Esc, Error, WindowSize, MouseEvent>;
 /// @param contextName      Name of the key map to use.
 /// @param event            Event to check for actions in key map.
 /// @param editorConfig     EditorConfig that contains key maps.
-tl::optional<std::string> getActionForEvent(const std::string& contextName, const Event& event, const terminal_editor::EditorConfig& editorConfig);
+tl::optional<std::string> getActionForEvent(const std::string& contextName, const Event& event, const EditorConfig& editorConfig);
 
 class EventQueue {
 public:
@@ -196,6 +196,6 @@ private:
     bool break_loop = false;
 };
 
-} // namespace terminal
+} // namespace terminal_editor
 
 #endif // TERMINAL_IO_H

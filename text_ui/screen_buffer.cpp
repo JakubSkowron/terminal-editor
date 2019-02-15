@@ -9,7 +9,7 @@
 #include <windows.h>
 #endif
 
-namespace terminal {
+namespace terminal_editor {
 
 void ScreenBuffer::resize(int w, int h) {
     size.width = w;
@@ -33,8 +33,8 @@ void ScreenBuffer::clear(Color bgColor) {
 }
 
 void ScreenBuffer::print(int x, int y, const std::string& text, Attributes attributes) {
-    auto codePointInfos = terminal_editor::parseLine(text);
-    auto graphemes = terminal_editor::renderLine(codePointInfos);
+    auto codePointInfos = parseLine(text);
+    auto graphemes = renderLine(codePointInfos);
 
     ZASSERT(x >= 0);
     ZASSERT(y >= 0);
@@ -331,8 +331,8 @@ void ScreenCanvas::print(Point pt, const std::string& text, Attributes normal, A
     if (pt.y >= m_clipRect.bottomRight().y)
         return;
 
-    auto codePointInfos = terminal_editor::parseLine(text);
-    auto graphemes = terminal_editor::renderLine(codePointInfos);
+    auto codePointInfos = parseLine(text);
+    auto graphemes = renderLine(codePointInfos);
 
     int curX = pt.x;
     for (const auto& grapheme : graphemes) {
@@ -342,7 +342,7 @@ void ScreenCanvas::print(Point pt, const std::string& text, Attributes normal, A
             continue;
         }
 
-        if (grapheme.kind == terminal_editor::GraphemeKind::NORMAL) {
+        if (grapheme.kind == GraphemeKind::NORMAL) {
             // Draw grapheme only if it fits on the canvas completely.
             if ((curX >= m_clipRect.topLeft.x) && (curX + grapheme.width <= m_clipRect.bottomRight().x)) {
                 m_screenBuffer.print(curX, pt.y, grapheme.rendered, normal);
@@ -351,12 +351,12 @@ void ScreenCanvas::print(Point pt, const std::string& text, Attributes normal, A
             curX += grapheme.width;
         } else {
             // We need to cut grapheme into graphemes, because replacements can be clipped char-by-char.
-            auto codePointInfosG = terminal_editor::parseLine(grapheme.rendered);
-            auto graphemesG = terminal_editor::renderLine(codePointInfosG);
+            auto codePointInfosG = parseLine(grapheme.rendered);
+            auto graphemesG = renderLine(codePointInfosG);
             for (const auto& graphemeG : graphemesG) {
                 // Draw grapheme only if it fits on the canvas completely.
                 if ((curX >= m_clipRect.topLeft.x) && (curX + graphemeG.width <= m_clipRect.bottomRight().x)) {
-                    m_screenBuffer.print(curX, pt.y, graphemeG.rendered, (grapheme.kind == terminal_editor::GraphemeKind::INVALID) ? invalid : replacement);
+                    m_screenBuffer.print(curX, pt.y, graphemeG.rendered, (grapheme.kind == GraphemeKind::INVALID) ? invalid : replacement);
                 }
 
                 curX += graphemeG.width;
@@ -369,4 +369,4 @@ void ScreenCanvas::print(Point pt, const std::string& text, Attributes normal, A
     }
 }
 
-} // namespace terminal
+} // namespace terminal_editor

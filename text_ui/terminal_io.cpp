@@ -27,14 +27,14 @@
 #include <unistd.h>
 #endif
 
-namespace terminal {
+namespace terminal_editor {
 
 int mouseX = 0;
 int mouseY = 0;
 
-tl::optional<std::string> getActionForEvent(const std::string& contextName, const Event& event, const terminal_editor::EditorConfig& editorConfig) {
+tl::optional<std::string> getActionForEvent(const std::string& contextName, const Event& event, const EditorConfig& editorConfig) {
     // Check if there is a key map for current context. Fallback to "global" if not found.
-    const terminal_editor::KeyMap* keyMap = nullptr;
+    const KeyMap* keyMap = nullptr;
     if (editorConfig.keyMaps.count(contextName) > 0) {
         keyMap = &editorConfig.keyMaps.at(contextName);
     }
@@ -54,7 +54,7 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
     if ((keyEvent == nullptr) && (mouseEvent == nullptr) && (esc == nullptr))
         return tl::nullopt;
 
-    auto matchesKey = [&keyEvent](const terminal_editor::KeyMap::KeyBinding& binding) {
+    auto matchesKey = [&keyEvent](const KeyMap::KeyBinding& binding) {
         if (keyEvent == nullptr)
             return false;
 
@@ -67,7 +67,7 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
         return true;
     };
 
-    auto matchesMouse = [&mouseEvent](const terminal_editor::KeyMap::KeyBinding& binding) {
+    auto matchesMouse = [&mouseEvent](const KeyMap::KeyBinding& binding) {
         if (mouseEvent == nullptr)
             return false;
 
@@ -82,7 +82,7 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
 
     const std::regex paramsRegex("(?:([0-9]*)(?:;([0-9]*))*)?");
 
-    auto matchesCsi = [&esc, &paramsRegex](const terminal_editor::KeyMap::KeyBinding& binding) {
+    auto matchesCsi = [&esc, &paramsRegex](const KeyMap::KeyBinding& binding) {
         if (esc == nullptr)
             return false;
 
@@ -104,7 +104,7 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
 
         std::vector<std::string> params;
         if (!esc->csiParameterBytes.empty()) {
-            params = terminal_editor::splitString(esc->csiParameterBytes, ';');
+            params = splitString(esc->csiParameterBytes, ';');
         }
         if (binding.csi->params.size() != params.size())
             return false;
@@ -119,7 +119,7 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
         return true;
     };
 
-    auto findAction = [&matchesKey, &matchesMouse, &matchesCsi](const terminal_editor::KeyMap& keyMap) -> tl::optional<std::string> {
+    auto findAction = [&matchesKey, &matchesMouse, &matchesCsi](const KeyMap& keyMap) -> tl::optional<std::string> {
         for (const auto& binding : keyMap.bindings) {
             if (matchesKey(binding))
                 return binding.action;
@@ -314,9 +314,9 @@ tl::optional<std::string> readConsole() {
             case WINDOW_BUFFER_SIZE_EVENT: // scrn buf. resizing
                 // ResizeEventProc( irInBuf[i].Event.WindowBufferSizeEvent );
                 auto wevent = irInBuf[i].Event.WindowBufferSizeEvent;
-                terminal_size::width = wevent.dwSize.X;
-                terminal_size::height = wevent.dwSize.Y;
-                terminal_size::fire_screen_resize_event();
+                g_terminal_width = wevent.dwSize.X;
+                g_terminal_height = wevent.dwSize.Y;
+                fire_screen_resize_event();
                 break;
 
             case FOCUS_EVENT: // disregard focus events
@@ -386,7 +386,6 @@ tl::expected<uint32_t, std::string> eatCodePoint(std::string& txt) {
         return tl::make_unexpected("Console input was empty.");
     }
 
-    using namespace terminal_editor;
     CodePointInfo codePoint = getFirstCodePoint(txt);
 
     if (!codePoint.valid) {
@@ -564,4 +563,4 @@ InputThread::~InputThread() {
     // thread.join();
 }
 
-} // namespace terminal
+} // namespace terminal_editor

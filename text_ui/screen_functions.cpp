@@ -13,7 +13,7 @@ static void fputs_ex(const char* s, std::FILE* stream, const char* err_msg) {
         throw std::system_error(errno, std::generic_category(), err_msg);
 }
 
-namespace terminal {
+namespace terminal_editor {
 
 void cursor_goto(int x, int y) {
     int ret = std::printf("\x1B[%d;%dH", y + 1, x + 1);
@@ -60,4 +60,4 @@ HideCursor::~HideCursor() {
     }
 }
 
-} // namespace terminal
+} // namespace terminal_editor

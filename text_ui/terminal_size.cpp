@@ -11,15 +11,16 @@
 #include <sys/ioctl.h>
 #endif
 
-namespace terminal_size {
-int width = 120;
-int height = 80;
+namespace terminal_editor {
+
+int g_terminal_width = 120;
+int g_terminal_height = 80;
 
 static std::function<void(int, int)> notify_window_changed;
 
 void fire_screen_resize_event() {
     if (notify_window_changed)
-        notify_window_changed(terminal_size::width, terminal_size::height);
+        notify_window_changed(g_terminal_width, g_terminal_height);
 }
 
 #ifdef WIN32
@@ -38,8 +39,8 @@ void shutdown() {
 static void update_screen_size() {
     struct winsize ws;
     ::ioctl(::fileno(stdout), TIOCGWINSZ, &ws);
-    terminal_size::width = ws.ws_col;
-    terminal_size::height = ws.ws_row;
+    g_terminal_width = ws.ws_col;
+    g_terminal_height = ws.ws_row;
 }
 
 /* Window change signal handler */
@@ -73,4 +74,4 @@ void shutdown() {
 
 #endif
 
-} // namespace terminal_size
+} // namespace terminal_editor

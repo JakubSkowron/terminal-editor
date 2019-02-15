@@ -18,7 +18,7 @@
 #include <thread>
 #include <iostream>
 
-using namespace terminal;
+using namespace terminal_editor;
 
 /* Using ANSI and xterm escape codes. It works in PuTTy, gnome-terminal,
    and other xterm-like terminals. Some codes will also work on real tty.
@@ -34,11 +34,11 @@ public:
     /// Sets up handler for window resize event.
     /// Also fires the event immediately.
     OnScreenResize(std::function<void(int width, int height)> listner) {
-        terminal_size::initialize(listner);
-        terminal_size::fire_screen_resize_event();
+        initialize(listner);
+        fire_screen_resize_event();
     }
     ~OnScreenResize() {
-        terminal_size::shutdown();
+        shutdown();
     }
 };
 
@@ -107,7 +107,7 @@ int main() {
 
                 auto e = *event;
 
-                auto action = getActionForEvent("global", e, terminal_editor::getEditorConfig());
+                auto action = getActionForEvent("global", e, getEditorConfig());
                 if (action) {
                     push_line(*action);
 

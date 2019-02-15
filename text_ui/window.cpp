@@ -2,7 +2,7 @@
 
 #include <limits>
 
-namespace terminal {
+namespace terminal_editor {
 
 Window::Window(WindowManager* windowManager, const std::string& name, Rect rect)
     : m_windowManager(windowManager)
@@ -51,7 +51,7 @@ void BasicWindow::drawSelf(ScreenCanvas& windowCanvas) {
     }
     windowCanvas.rect(localRect, m_doubleEdge, true, attributes);
 
-    auto messageLength = terminal_editor::getRenderedWidth(m_message);
+    auto messageLength = getRenderedWidth(m_message);
 
     auto point = localRect.center();
     point.x = (localRect.size.width - messageLength) / 2 - 1;
@@ -122,13 +122,13 @@ void EditorWindow::drawSelf(ScreenCanvas& windowCanvas) {
 
     // Print cursor. We don't highlight whole grapheme under cursor intentionally. This could change though.
     auto line = m_textBuffer.getLine(m_editCursorPosition.y);
-    auto codePointInfos = terminal_editor::parseLine(line);
-    auto graphemes = terminal_editor::renderLine(codePointInfos);
+    auto codePointInfos = parseLine(line);
+    auto graphemes = renderLine(codePointInfos);
     auto renderedLine = renderGraphemes(graphemes, false);
 
     // Parse again to separate replacements into individual characters.
-    auto codePointInfos2 = terminal_editor::parseLine(renderedLine);
-    auto graphemes2 = terminal_editor::renderLine(codePointInfos2);
+    auto codePointInfos2 = parseLine(renderedLine);
+    auto graphemes2 = renderLine(codePointInfos2);
     std::string textUnderCursor;
     int x = 0;
     for (const auto& grapheme : graphemes2) {
@@ -148,22 +148,22 @@ void EditorWindow::drawSelf(ScreenCanvas& windowCanvas) {
 
 /// Returns rendered position that is equivalent to given text bufer position.
 /// @note Rows out of text buffer range are treated as empty.
-Point positionToPoint(const terminal_editor::TextBuffer& textBuffer, terminal_editor::Position position) {
+Point positionToPoint(const TextBuffer& textBuffer, Position position) {
     auto linePrefix = textBuffer.getLineRange(position.row, 0, position.column);
-    auto width = terminal_editor::getRenderedWidth(linePrefix);
+    auto width = getRenderedWidth(linePrefix);
     return Point { width, position.row };
 }
 
 /// Returns text bufer position that is equivalent to given rendered position.
 /// @note Rows out of text buffer range are treated as empty.
-terminal_editor::Position pointToPosition(const terminal_editor::TextBuffer& textBuffer, Point point) {
+Position pointToPosition(const TextBuffer& textBuffer, Point point) {
     if (point.x == 0) {
-        return terminal_editor::Position{point.y, point.x};
+        return Position{point.y, point.x};
     }
 
     auto line = textBuffer.getLineRange(point.y, 0, std::numeric_limits<int>::max());
-    auto codePointInfos = terminal_editor::parseLine(line);
-    auto graphemes = terminal_editor::renderLine(codePointInfos);
+    auto codePointInfos = parseLine(line);
+    auto graphemes = renderLine(codePointInfos);
     int x = 0;
     int length = 0;
     for (const auto& grapheme : graphemes) {
@@ -174,10 +174,10 @@ terminal_editor::Position pointToPosition(const terminal_editor::TextBuffer& tex
             break;
     }
 
-    return terminal_editor::Position{point.y, length};
+    return Position{point.y, length};
 }
 
-Point clampPointToGraphemes(const terminal_editor::TextBuffer& textBuffer, Point point) {
+Point clampPointToGraphemes(const TextBuffer& textBuffer, Point point) {
     auto position = pointToPosition(textBuffer, point);
     position = textBuffer.clampPosition(position);
     auto clampedPoint = positionToPoint(textBuffer, position);
@@ -187,7 +187,7 @@ Point clampPointToGraphemes(const terminal_editor::TextBuffer& textBuffer, Point
 /// Move cursor by given number of columns, wrapping at end and beginning of lines.
 /// @note Such a general function is a bit overkill, since moving by one column or one row at a time is only needed.
 [[nodiscard]]
-terminal_editor::Position moveCursorColumn(const terminal_editor::TextBuffer& textBuffer, terminal_editor::Position position, int columnDelta) {
+Position moveCursorColumn(const TextBuffer& textBuffer, Position position, int columnDelta) {
     // Move to target column, wrapping at end and beginning of lines.
     while (true) {
         // Make the position valid, so that wrapping at end and beginning of lines will work predictably.
@@ -235,7 +235,7 @@ terminal_editor::Position moveCursorColumn(const terminal_editor::TextBuffer& te
 /// Move cursor by given number of columns, wrapping at end and beginning of lines.
 /// @note Such a general function is a bit overkill, since moving by one column or one row at a time is only needed.
 [[nodiscard]]
-Point moveCursorColumn(const terminal_editor::TextBuffer& textBuffer, Point point, int columnDelta) {
+Point moveCursorColumn(const TextBuffer& textBuffer, Point point, int columnDelta) {
     auto position = pointToPosition(textBuffer, point);
     auto newPosition = moveCursorColumn(textBuffer, position, columnDelta);
     auto newPoint = positionToPoint(textBuffer, newPosition);
@@ -427,7 +427,7 @@ bool EditorWindow::doProcessTextInput(const std::string& text) {
 }
 
 Window* messageBox(Window* parent, const std::string& message) {
-    auto width = terminal_editor::getRenderedWidth(message) + 4;
+    auto width = getRenderedWidth(message) + 4;
     auto height = 3;
 
     auto rect = parent->getScreenRect();
@@ -443,4 +443,4 @@ Window* messageBox(Window* parent, const std::string& message) {
     return boxWindow;
 };
 
-} // namespace terminal
+} // namespace terminal_editor

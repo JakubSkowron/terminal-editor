@@ -6,7 +6,7 @@
 
 #include <iostream>
 
-namespace terminal {
+namespace terminal_editor {
 
 class FullscreenOn {
 public:
@@ -31,6 +31,6 @@ void cursor_goto(int x, int y);
 /// @note x and y are 0 based.
 void cursor_goto(std::ostream& os, int x, int y);
 
-} // namespace terminal
+} // namespace terminal_editor
 
 #endif // SCREEN_FUNCTIONS_H

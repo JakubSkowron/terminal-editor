@@ -9,7 +9,7 @@
 
 #include <gsl/span>
 
-namespace terminal {
+namespace terminal_editor {
 
 enum class Color {
     Black	        = 30,
@@ -141,4 +141,4 @@ void fill_rect(ScreenBuffer& screenBuffer, Rect rect, Color bgColor);
 /// Rectangle is clipped by the clipRect. clipRect must be wholy inside screen buffer.
 void draw_rect(ScreenBuffer& screenBuffer, Rect clipRect, Rect rect, bool doubleEdge, bool fill, Attributes attributes);
 
-} // namespace terminal
+} // namespace terminal_editor

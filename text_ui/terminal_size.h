@@ -6,10 +6,10 @@
 
 #include <functional>
 
-namespace terminal_size {
+namespace terminal_editor {
 // will be updated automatically when listening (TODO: protect by mutex)
-extern int width;
-extern int height;
+extern int g_terminal_width;
+extern int g_terminal_height;
 
 /// Initializes width and height and registers window resize handler.
 void initialize(std::function<void(int width, int height)> listener = [](int, int) {});
@@ -20,6 +20,6 @@ void shutdown();
 /// Fires window resize handler with current windows size.
 void fire_screen_resize_event();
 
-} // namespace terminal_size
+} // namespace terminal_editor
 
 #endif // TERMINAL_SIZE_H
