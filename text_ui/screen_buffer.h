@@ -135,6 +135,11 @@ public:
     /// @param text     Input string, doesn't have to be valid or printable UTF-8.
     void print(int x, int y, const std::string& text, Attributes attributes);
 
+    /// Draws given graphemes on the screen.
+    /// Throws if text is not entirely on the screen.
+    /// @param graphemes    Graphemes to draw.
+    void print(int x, int y, gsl::span<const Grapheme> graphemes, Attributes attributes);
+
     /// Draws this screen buffer to the console.
     void present();
 };
