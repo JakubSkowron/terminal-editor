@@ -71,7 +71,10 @@ int main() {
 
         WindowManager windowManager;
         auto rootWindow = windowManager.getRootWindow();
-        auto editorWindow = rootWindow->addChild<EditorWindow>("Editor", Rect{}, true, Attributes{Color::White, Color::Blue, Style::Normal});
+        Attributes normalAttributes {Color::White, Color::Blue, Style::Normal};
+        Attributes invalidAttributes {Color::White, Color::Red, Style::Normal};
+        Attributes replacementAttributes {Color::White, Color::Green, Style::Normal};
+        auto editorWindow = rootWindow->addChild<EditorWindow>("Editor", Rect{}, true, normalAttributes, invalidAttributes, replacementAttributes);
         windowManager.setFocusedWindow(editorWindow);
 
         auto redraw = [&screenBuffer, &line_buffer, &rootWindow]() {
