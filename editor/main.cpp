@@ -6,8 +6,9 @@
 #include "screen_buffer.h"
 #include "zlogging.h"
 #include "zstr.h"
-#include "window.h"
 #include "zerrors.h"
+#include "window.h"
+#include "editor_window.h"
 
 #include <chrono>
 #include <cstdio>

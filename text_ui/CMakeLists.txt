@@ -17,6 +17,9 @@ set(LIB_SOURCES
 
     window.h
     window.cpp
+
+    editor_window.h
+    editor_window.cpp
     )
 
 add_library(${LIB_NAME} ${LIB_SOURCES})
