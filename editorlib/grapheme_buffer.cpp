@@ -15,11 +15,15 @@ namespace terminal_editor {
 GraphemeBuffer::GraphemeBuffer(TextBuffer& textBuffer)
     : m_textBuffer(textBuffer)
 {
+    rerenderAllLines();
 }
 
 void GraphemeBuffer::loadFile(const std::string& fileName) {
     m_textBuffer.loadFile(fileName);
+    rerenderAllLines();
+}
 
+void GraphemeBuffer::rerenderAllLines() {
     renderedLines.resize(m_textBuffer.getNumberOfLines());
     for (int row = 0; row < m_textBuffer.getNumberOfLines(); ++row) {
         rerenderLine(row);
@@ -92,7 +96,7 @@ Position GraphemeBuffer::pointToPosition(Point point, bool after) {
     int widthSoFar = 0;
     for (int i = 0; i < line.size(); ++i) {
         // If this grapheme ends before point, go to next grapheme.
-        if (widthSoFar + line[i].width < point.x) {
+        if (widthSoFar + line[i].width <= point.x) {
             widthSoFar += line[i].width;
             continue;
         }
@@ -118,7 +122,6 @@ Position GraphemeBuffer::insertText(Position position, const std::string& text) 
     position = clampPosition(position);
     auto textPosition = positionToTextPosition(position);
     auto textEndPosition = m_textBuffer.insertText(textPosition, text);
-    auto endPosition = textPositionToPosition(textEndPosition, true);
 
     // Now we need to re-render changed lines.
 
@@ -126,12 +129,14 @@ Position GraphemeBuffer::insertText(Position position, const std::string& text) 
     auto numLinesAdded = m_textBuffer.getNumberOfLines() - getNumberOfLines();
     ZASSERT(numLinesAdded >= 0);
     // Insert dummy lines. They will be rerendered below.
-    renderedLines.insert(renderedLines.begin() + position.row, numLinesAdded, {});
+    renderedLines.insert(renderedLines.begin() + textPosition.row, numLinesAdded, {});
 
-    for (int row = position.row; row <= endPosition.row; ++row) {
+    for (int row = textPosition.row; row <= textEndPosition.row; ++row) {
         rerenderLine(row);
     }
 
+    // End position must be calculated after re-render.
+    auto endPosition = textPositionToPosition(textEndPosition, true);
     return endPosition;
 }
 
@@ -160,7 +165,7 @@ Position GraphemeBuffer::clampPosition(Position position) const {
     position.row = std::max(position.row, 0);
     position.row = std::min(position.row, getNumberOfLines() - 1);
 
-    auto lineLength = renderedLines.empty() ? 0 : static_cast<int>(renderedLines[position.row].size());
+    auto lineLength = static_cast<int>(renderedLines[position.row].size());
 
     position.column = std::max(position.column, 0);
     position.column = std::min(position.column, lineLength);
@@ -187,7 +192,7 @@ Position GraphemeBuffer::textPositionToPosition(Position textPosition, bool afte
         auto numBytes = static_cast<int>(line[i].consumedInput.size());
 
         // If this grapheme ends before textPosition, go to next grapheme.
-        if (bytesSoFar + numBytes < textPosition.column) {
+        if (bytesSoFar + numBytes <= textPosition.column) {
             bytesSoFar += numBytes;
             continue;
         }

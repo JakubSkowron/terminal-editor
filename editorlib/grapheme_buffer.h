@@ -120,6 +120,10 @@ protected:
     [[nodiscard]]
     Position textPositionToPosition(Position textPosition, bool after) const;
 
+    /// Re-renders all lines based on TextBuffer.
+    /// renderedLines is re-initialized.
+    void rerenderAllLines();
+
     /// Re-renders given line.
     void rerenderLine(int row);
 };

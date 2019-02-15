@@ -169,7 +169,7 @@ Position TextBuffer::clampPosition(Position position) const {
     position.row = std::max(position.row, 0);
     position.row = std::min(position.row, getNumberOfLines() - 1);
 
-    auto lineLength = lines.empty() ? 0 : static_cast<int>(lines[position.row].size());
+    auto lineLength = static_cast<int>(lines[position.row].size());
 
     position.column = std::max(position.column, 0);
     position.column = std::min(position.column, lineLength);
