@@ -6,6 +6,7 @@
 #include "text_renderer.h"
 #include "screen_buffer.h"
 #include "geometry.h"
+#include "terminal_io.h"
 
 #include <algorithm>
 #include <memory>
@@ -164,6 +165,26 @@ public:
         return false;
     }
 
+    bool processMouseEvent(const MouseEvent& mouseEvent) {
+        if (m_parent) {
+            if (m_parent->preProcessMouseEvent(mouseEvent))
+                return true;
+        }
+
+        if (preProcessMouseEvent(mouseEvent))
+            return true;
+
+        if (doProcessMouseEvent(mouseEvent))
+            return true;
+
+        if (m_parent) {
+            if (m_parent->doProcessMouseEvent(mouseEvent))
+                return true;
+        }
+
+        return false;
+    }
+
     bool processAction(const std::string& action) {
         if (m_parent) {
             if (m_parent->preProcessAction(action))
@@ -203,6 +224,16 @@ protected:
 
     virtual bool doProcessTextInput(const std::string& text) {
         ZUNUSED(text);
+        return false;
+    }
+
+    virtual bool preProcessMouseEvent(const MouseEvent& mouseEvent) {
+        ZUNUSED(mouseEvent);
+        return false;
+    }
+
+    virtual bool doProcessMouseEvent(const MouseEvent& mouseEvent) {
+        ZUNUSED(mouseEvent);
         return false;
     }
 };

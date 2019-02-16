@@ -43,6 +43,8 @@ protected:
     bool doProcessAction(const std::string& action) override;
 
     bool doProcessTextInput(const std::string& text) override;
+
+    bool doProcessMouseEvent(const MouseEvent& mouseEvent) override;
 };
 
 } // namespace terminal_editor

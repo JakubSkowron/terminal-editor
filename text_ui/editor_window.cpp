@@ -278,4 +278,19 @@ bool EditorWindow::doProcessTextInput(const std::string& text) {
     return true;
 }
 
+bool EditorWindow::doProcessMouseEvent(const MouseEvent& mouseEvent) {
+    auto screenRect = getScreenRect();
+    screenRect.topLeft += Size(1, 1);
+    screenRect.size -= Size(2, 2);
+
+    if (!screenRect.contains(mouseEvent.position))
+        return false;
+
+    auto point = mouseEvent.position - screenRect.topLeft.asSize();
+    m_virtualCursorPosition = m_topLeftPosition + point.asSize();
+    m_editCursorPosition = m_graphemeBuffer.pointToPosition(m_virtualCursorPosition, false);
+
+    return true;
+}
+
 } // namespace terminal_editor

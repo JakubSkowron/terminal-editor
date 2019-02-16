@@ -18,6 +18,7 @@
 #include <sstream>
 #include <thread>
 #include <iostream>
+//#include <clocale>
 
 using namespace terminal_editor;
 
@@ -45,6 +46,10 @@ public:
 
 int main() {
     using namespace std::chrono_literals;
+
+    //std::cout.sync_with_stdio(false);
+    //std::setlocale(LC_ALL, "en_US.UTF8"); // @todo Is ths necessary?
+
     try {
         ScreenBuffer screenBuffer;
 
@@ -113,6 +118,7 @@ int main() {
 
                 auto action = getActionForEvent("global", e, getEditorConfig());
                 if (action) {
+                    //LOG() << "Action: " << *action;
                     push_line(*action);
 
                     auto focusedWindow = windowManager.getFocusedWindow();
@@ -161,7 +167,10 @@ int main() {
                     key += " (" + std::to_string(keyEvent->codePoint) + ")";
                     push_line(key);
 
-                    editorWindow->processTextInput(keyEvent->getUtf8(false));
+                    auto focusedWindow = windowManager.getFocusedWindow();
+                    if (focusedWindow) {
+                        (*focusedWindow)->processTextInput(keyEvent->getUtf8(false));
+                    }
                 }
                 else
                 if (auto windowSize = std::get_if<WindowSize>(&e)) {
@@ -195,9 +204,15 @@ int main() {
                     push_line(ZSTR() << "Mouse " << mouseEvent->kind << " x=" << mouseEvent->position.x << " y=" << mouseEvent->position.y);
 
                     if (mouseEvent->kind == MouseEvent::Kind::LMB) {
+                        auto oldWindow = windowManager.getFocusedWindow();
                         auto window = rootWindow->getWindowForPoint(mouseEvent->position);
                         if (window) {
                             windowManager.setFocusedWindow(*window);
+                            if (oldWindow) {
+                                (*oldWindow)->processAction("focus-off");
+                            }
+                            (*window)->processAction("focus-on");
+                            (*window)->processMouseEvent(*mouseEvent);
                         }
                     }
                 }
