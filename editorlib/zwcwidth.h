@@ -13,7 +13,7 @@
 
 namespace terminal_editor {
 
-#if 1
+#if !defined(USE_NATIVE_WCWIDTH)
 
 /// Returns number of columns required to represent given character.
 /// Returns 0 for zero width caracters.

@@ -4,6 +4,8 @@ project(TerminalEditor LANGUAGES CXX)
 include(CMakeDependentOption)
 enable_testing()
 
+option(USE_NATIVE_WCWIDTH "On Linux wcwdith() from OS is used. Otherwise internal implementation is used. (On Windows internal implementation is used regardless of this flag.)" OFF)
+
 # Address and thread sanitizers can't be used together.
 option(ENABLE_ADDRESS_SANITIZER "Enables address sanitizer")
 cmake_dependent_option(ENABLE_THREAD_SANITIZER "Enables thread sanitizer (can't be used with address sanitizer)" OFF "NOT ENABLE_ADDRESS_SANITIZER" OFF)
@@ -50,6 +52,13 @@ else()
 endif()
 
 function(SetCompilerOptions targetName)
+    if(USE_NATIVE_WCWIDTH AND NOT WIN32)
+        message(STATUS "Using native wcwidth().")
+        target_compile_definitions(${targetName} PUBLIC USE_NATIVE_WCWIDTH)
+    else()
+        message(STATUS "Using internal wcwidth().")
+    endif()
+
     # Recommended warnings mostly taken from https://github.com/lefticus/cppbestpractices/blob/master/02-Use_the_Tools_Available.md
     if(MSVC)
         set(optionsList
