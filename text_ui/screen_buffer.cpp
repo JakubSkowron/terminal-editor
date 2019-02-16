@@ -6,7 +6,9 @@
 #include <unordered_map>
 
 #ifdef WIN32
+#include "text_parser.h"
 #include <windows.h>
+#include <tl/optional.hpp>
 #endif
 
 namespace terminal_editor {
@@ -87,8 +89,14 @@ int setStyle(std::ostream& os, int currentStyleHash, Attributes attributes) {
     return styleHash;
 }
 
+// There are two implementations for Windows:
+// 0 - ANSI escape codes (full featured)
+// 1 - Windows console functions (full featured)
+// 2 - Windows console blit (doesn't support characters wider than 1 and those that require 4 bytes in UTF-16).
 #define USE_WIN32_CONSOLE 0
-#if USE_WIN32_CONSOLE
+
+#if defined(WIN32) && (USE_WIN32_CONSOLE != 0)
+
 std::unordered_map<Color, WORD> fgColors = {
     {Color::Black,          0},
     {Color::Red,            FOREGROUND_RED},
@@ -127,6 +135,92 @@ std::unordered_map<Color, WORD> bgColors = {
     {Color::Bright_White,   BACKGROUND_INTENSITY | BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE},
 };
 
+WORD attributesToWinAttributes(Attributes attributes) {
+    WORD winAttributes = fgColors.at(attributes.fgColor) | bgColors.at(attributes.bgColor) | (attributes.style == Style::Bold ? COMMON_LVB_UNDERSCORE : 0);
+    return winAttributes;
+}
+
+#endif
+
+#if defined(WIN32) && (USE_WIN32_CONSOLE == 2)
+
+/// Hacky function to convert UTF-32 code point to one 16-bit UTF-16 character. Somehow.
+tl::optional<uint16_t> utf32ToUtf16(const CodePointInfo& codePointInfo) {
+    if (!codePointInfo.valid) {
+        return tl::nullopt;
+    }
+
+    if (codePointInfo.codePoint <= 0xd7ff) {
+        return static_cast<uint16_t>(codePointInfo.codePoint);
+    }
+
+    if ( (codePointInfo.codePoint >= 0xe000) && (codePointInfo.codePoint <= 0xffff) ) {
+        return static_cast<uint16_t>(codePointInfo.codePoint);
+    }
+
+    return tl::nullopt;
+}
+
+std::vector<CHAR_INFO> buildWindowsConsoleBuffer(Size size, const std::vector<ScreenBuffer::Character>& characters) {
+    std::vector<CHAR_INFO> screen(size.width * size.height);
+
+    for (int y = 0; y < size.height; ++y) {
+        for (int x = 0; x < size.width; ++x) {
+            const auto& character = characters[y * size.width + x];
+
+            if (character.text.size() == 1) {
+                CHAR_INFO& charInfo = screen[y * size.width + x];
+                charInfo.Char.UnicodeChar = character.text[0];
+                charInfo.Attributes = attributesToWinAttributes(character.attributes);
+                continue;
+            }
+
+            // Character can be either a single character, or a replacement string, so this simple code below works more or less.
+            auto codePointInfos = parseLine(character.text);
+            for (int offset = 0; offset < codePointInfos.size(); ++offset) {
+                const CodePointInfo& codePointInfo = codePointInfos[offset];
+                auto utf16 = utf32ToUtf16(codePointInfo);
+                CHAR_INFO& charInfo = screen[y * size.width + x + offset];
+                if (utf16) {
+                    charInfo.Char.UnicodeChar = *utf16;
+                    charInfo.Attributes = attributesToWinAttributes(character.attributes);
+                } else {
+                    charInfo.Char.UnicodeChar = static_cast<WORD>('@');
+                    charInfo.Attributes = fgColors.at(Color::Cyan) | bgColors.at(Color::Bright_Magenta);
+                }
+            }
+        }
+    }
+
+    return screen;
+}
+
+void ScreenBuffer::present() {
+    if ( (size.width == 0) || (size.height == 0) )
+        return;
+
+    auto screenBuffer = buildWindowsConsoleBuffer(size, characters);
+
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (hOut == INVALID_HANDLE_VALUE) {
+        ZTHROW() << "Could not get console output handle: " << GetLastError();
+    }
+
+    COORD bufferSize { static_cast<SHORT>(size.width), static_cast<SHORT>(size.height) };
+    COORD src { 0, 0 };
+    SMALL_RECT dest = { 0, 0, static_cast<SHORT>(size.width), static_cast<SHORT>(size.height) };
+    if (!WriteConsoleOutputW(hOut, screenBuffer.data(), bufferSize, src, &dest)) {
+        ZTHROW() << "Failed writing to console: " << GetLastError();
+    }
+
+    fullRepaintNeeded = false;
+    previousCharacters = characters;
+}
+
+#endif
+
+#if defined(WIN32) && (USE_WIN32_CONSOLE == 1)
+
 int setStyle(HANDLE hOut, int currentStyleHash, Attributes attributes) {
     int fgColorCode = static_cast<int>(attributes.fgColor);
     int bgColorCode = static_cast<int>(attributes.bgColor) + 10;
@@ -136,8 +230,8 @@ int setStyle(HANDLE hOut, int currentStyleHash, Attributes attributes) {
     if (styleHash == currentStyleHash)
         return styleHash;
 
-    WORD attributes = fgColors.at(attributes.fgColor) | bgColors.at(attributes.bgColor) | (attributes.style == Style::Bold ? COMMON_LVB_UNDERSCORE : 0);
-    if (!SetConsoleTextAttribute(hOut, attributes)) {
+    WORD winAttributes = attributesToWinAttributes(attributes);
+    if (!SetConsoleTextAttribute(hOut, winAttributes)) {
         ZTHROW() << "Could not set console attributes: " << GetLastError();
     }
 
@@ -146,13 +240,16 @@ int setStyle(HANDLE hOut, int currentStyleHash, Attributes attributes) {
 
 void cursor_goto(HANDLE hOut, int x, int y) {
     COORD cursorPosition;
-    cursorPosition.X = x;
-    cursorPosition.Y = y;
+    cursorPosition.X = static_cast<SHORT>(x);
+    cursorPosition.Y = static_cast<SHORT>(y);
     if (!SetConsoleCursorPosition(hOut, cursorPosition)) {
         ZTHROW() << "Could not set console cursor position: " << GetLastError();
     }
 }
+
 #endif
+
+#if defined(WIN32) && ((USE_WIN32_CONSOLE == 0) || (USE_WIN32_CONSOLE == 1))
 
 void ScreenBuffer::present() {
 #ifdef WIN32
@@ -162,7 +259,7 @@ void ScreenBuffer::present() {
     }
 #endif
 
-#if USE_WIN32_CONSOLE
+#if defined(WIN32) && (USE_WIN32_CONSOLE == 1)
     auto ss = hOut;
 #else
     std::stringstream ss;
@@ -191,7 +288,7 @@ void ScreenBuffer::present() {
 
             currentStyleHash = setStyle(ss, currentStyleHash, character.attributes);
 
-#if USE_WIN32_CONSOLE
+#if defined(WIN32) && (USE_WIN32_CONSOLE == 1)
             DWORD numberOfCharsWritten;
             if (!WriteConsoleA(hOut, character.text.c_str(), character.text.size(), &numberOfCharsWritten, NULL)) {
                 ZTHROW() << "Error while writing to console: " << GetLastError();
@@ -206,7 +303,8 @@ void ScreenBuffer::present() {
         ZASSERT(curX <= size.width);
     }
 
-#if USE_WIN32_CONSOLE
+#if defined(WIN32) && (USE_WIN32_CONSOLE == 1)
+    // All drawing was already done.
 #else
     auto str = ss.str();
 #ifdef WIN32
@@ -224,6 +322,8 @@ void ScreenBuffer::present() {
     previousCharacters = characters;
 }
 
+#endif
+
 // This is a super ugly hack. I have no idea why this is necessary,
 #ifdef WIN32X
 #define _u8(x) x
@@ -238,9 +338,11 @@ void fill_rect(ScreenBuffer& screenBuffer, Rect rect, Color bgColor) {
 
     auto startX = rect.topLeft.x;
     auto sizeX = rect.size.width;
-    std::string blank(sizeX, ' ');
+    auto blank = simpleGrapheme(_u8(" "));
     for (int y = rect.topLeft.y; y < rect.bottomRight().y; ++y) {
-        screenBuffer.print(startX, y, blank, {Color::White, bgColor, Style::Normal});
+        for (int x = 0; x < sizeX; ++x) {
+            screenBuffer.print(startX + x, y, {&blank, 1}, {Color::White, bgColor, Style::Normal});
+        }
     }
 }
 
@@ -250,20 +352,20 @@ void draw_rect(ScreenBuffer& screenBuffer, Rect clipRect, Rect rect, bool double
 
     ZASSERT(Rect(screenBuffer.getSize()).contains(clipRect)) << "Clip rectangle must be fully contained inside the ScreenBuffer.";
 
-    auto tl = (doubleEdge ? _u8("╔") : _u8("┌"));
-    auto tm = (doubleEdge ? _u8("═") : _u8("─"));
-    auto tr = (doubleEdge ? _u8("╗") : _u8("┐"));
-    auto ml = (doubleEdge ? _u8("║") : _u8("│"));
-    auto mr = (doubleEdge ? _u8("║") : _u8("│"));
-    auto bl = (doubleEdge ? _u8("╚") : _u8("└"));
-    auto bm = (doubleEdge ? _u8("═") : _u8("─"));
-    auto br = (doubleEdge ? _u8("╝") : _u8("┘"));
+    auto tl = simpleGrapheme(doubleEdge ? _u8("╔") : _u8("┌"));
+    auto tm = simpleGrapheme(doubleEdge ? _u8("═") : _u8("─"));
+    auto tr = simpleGrapheme(doubleEdge ? _u8("╗") : _u8("┐"));
+    auto ml = simpleGrapheme(doubleEdge ? _u8("║") : _u8("│"));
+    auto mr = simpleGrapheme(doubleEdge ? _u8("║") : _u8("│"));
+    auto bl = simpleGrapheme(doubleEdge ? _u8("╚") : _u8("└"));
+    auto bm = simpleGrapheme(doubleEdge ? _u8("═") : _u8("─"));
+    auto br = simpleGrapheme(doubleEdge ? _u8("╝") : _u8("┘"));
 
-    auto print = [&screenBuffer, clipRect, rect, attributes](int x, int y, const std::string& txt) {
+    auto print = [&screenBuffer, clipRect, rect, attributes](int x, int y, const Grapheme& grapheme) {
         auto pt = Point(x, y) + rect.topLeft.asSize();
         if (!clipRect.contains(pt))
             return;
-        screenBuffer.print(pt.x, pt.y, txt, attributes);
+        screenBuffer.print(pt.x, pt.y, {&grapheme, 1}, attributes);
     };
 
     // top line

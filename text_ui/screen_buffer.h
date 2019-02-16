@@ -82,7 +82,7 @@ public:
 };
 
 class ScreenBuffer {
-private:
+public:
     struct Character {
         std::string text; ///< UTF-8 text to draw. If empty, then this place will be drawn by preceeding character with width > 1.
         int width;        ///< Width of text once it will be rendered.
@@ -98,6 +98,7 @@ private:
         }
     };
 
+private:
     Size size;
     std::vector<Character> characters;
     std::vector<Character> previousCharacters;
@@ -143,6 +144,13 @@ public:
     /// Draws this screen buffer to the console.
     void present();
 };
+
+/// Returns Grapheme that corresponds to given simpleCharacter.
+/// @param simpleCharacter      Must be a valid UTF-8 string, that converts to a printable character of width 1.
+template<int N>
+Grapheme simpleGrapheme(const char (&simpleChar)[N]) {
+    return { GraphemeKind::NORMAL, simpleChar, "", 1, {simpleChar, N - 1} };
+}
 
 /// Draws a filled rectangle.
 /// Rectangle is clipped to fit the scren buffer.
