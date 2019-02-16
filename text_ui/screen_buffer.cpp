@@ -275,7 +275,7 @@ void cursor_goto(HANDLE hOut, int x, int y) {
 
 #endif
 
-#if defined(WIN32) && ((USE_WIN32_CONSOLE == 0) || (USE_WIN32_CONSOLE == 1))
+#if !defined(WIN32) || (USE_WIN32_CONSOLE == 0) || (USE_WIN32_CONSOLE == 1)
 
 void ScreenBuffer::present() {
 #ifdef WIN32
