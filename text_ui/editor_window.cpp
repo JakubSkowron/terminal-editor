@@ -10,7 +10,7 @@ void EditorWindow::drawSelf(ScreenCanvas& windowCanvas) {
     if (getWindowManager()->getFocusedWindow() == this) {
         attributes.fgColor = Color::Bright_Red;
     }
-    windowCanvas.rect(localRect, m_doubleEdge, true, attributes);
+    windowCanvas.fillRect(localRect, m_doubleEdge, true, attributes);
 
     auto textCanvas = windowCanvas.getSubCanvas({{1, 1}, Size{localRect.size.width - 2, localRect.size.height - 2}});
 

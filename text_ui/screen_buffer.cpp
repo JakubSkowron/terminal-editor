@@ -13,6 +13,13 @@
 
 namespace terminal_editor {
 
+// This is a super ugly hack. This was an attempt to overcome weir encoding issues in Visual Studio source code. But I think using BOM in source code solves this.
+#ifdef WIN32X
+#define _u8(x) x
+#else
+#define _u8(x) u8##x
+#endif
+
 void ScreenBuffer::resize(int w, int h) {
     size.width = w;
     size.height = h;
@@ -28,10 +35,29 @@ void ScreenBuffer::resize(int w, int h) {
 }
 
 void ScreenBuffer::clear(Color bgColor) {
-    Character emptyCharacter{" ", 1, {Color::Yellow, bgColor, Style::Normal}};
+    Character emptyCharacter{" ", 1, {Color::White, bgColor, Style::Normal}};
 
     characters.resize(0);
     characters.resize(size.width * size.height, emptyCharacter);
+}
+
+void ScreenBuffer::fillRect(Rect rect, Color bgColor) {
+    Character emptyCharacter{" ", 1, {Color::White, bgColor, Style::Normal}};
+
+    rect = rect.intersect(getSize());
+    if (rect.isEmpty())
+        return;
+
+    auto startX = rect.topLeft.x;
+    auto startY = rect.topLeft.y;
+    auto endX = rect.bottomRight().x;
+    auto endY = rect.bottomRight().y;
+
+    for (int y = startY; y < endY; ++y) {
+        for (int x = startX; x < endX; ++x) {
+            characters[y * size.width + x] = emptyCharacter;
+        }
+    }
 }
 
 void ScreenBuffer::print(int x, int y, const std::string& text, Attributes attributes) {
@@ -324,34 +350,8 @@ void ScreenBuffer::present() {
 
 #endif
 
-// This is a super ugly hack. I have no idea why this is necessary,
-#ifdef WIN32X
-#define _u8(x) x
-#else
-#define _u8(x) u8##x
-#endif
-
-void fill_rect(ScreenBuffer& screenBuffer, Rect rect, Color bgColor) {
-    rect = rect.intersect(screenBuffer.getSize());
-    if (rect.isEmpty())
-        return;
-
-    auto startX = rect.topLeft.x;
-    auto sizeX = rect.size.width;
-    auto blank = simpleGrapheme(_u8(" "));
-    for (int y = rect.topLeft.y; y < rect.bottomRight().y; ++y) {
-        for (int x = 0; x < sizeX; ++x) {
-            screenBuffer.print(startX + x, y, {&blank, 1}, {Color::White, bgColor, Style::Normal});
-        }
-    }
-}
-
-void draw_rect(ScreenBuffer& screenBuffer, Rect clipRect, Rect rect, bool doubleEdge, bool fill, Attributes attributes) {
-    if (clipRect.isEmpty())
-        return;
-
-    ZASSERT(Rect(screenBuffer.getSize()).contains(clipRect)) << "Clip rectangle must be fully contained inside the ScreenBuffer.";
-
+template<bool UseClipRect>
+void draw_frame_impl(ScreenBuffer& screenBuffer, Rect clipRect, Rect rect, bool doubleEdge, Attributes attributes) {
     auto tl = simpleGrapheme(doubleEdge ? _u8("╔") : _u8("┌"));
     auto tm = simpleGrapheme(doubleEdge ? _u8("═") : _u8("─"));
     auto tr = simpleGrapheme(doubleEdge ? _u8("╗") : _u8("┐"));
@@ -363,7 +363,7 @@ void draw_rect(ScreenBuffer& screenBuffer, Rect clipRect, Rect rect, bool double
 
     auto print = [&screenBuffer, clipRect, rect, attributes](int x, int y, const Grapheme& grapheme) {
         auto pt = Point(x, y) + rect.topLeft.asSize();
-        if (!clipRect.contains(pt))
+        if (UseClipRect && !clipRect.contains(pt))
             return;
         screenBuffer.print(pt.x, pt.y, {&grapheme, 1}, attributes);
     };
@@ -387,11 +387,25 @@ void draw_rect(ScreenBuffer& screenBuffer, Rect clipRect, Rect rect, bool double
         print(x, rect.size.height - 1, bm);
     }
     print(rect.size.width - 1, rect.size.height - 1, br);
+}
+
+void draw_rect(ScreenBuffer& screenBuffer, Rect clipRect, Rect rect, bool doubleEdge, bool fill, Attributes attributes) {
+    if (clipRect.isEmpty())
+        return;
+
+    ZASSERT(Rect(screenBuffer.getSize()).contains(clipRect)) << "Clip rectangle must be fully contained inside the ScreenBuffer.";
+
+    if (Rect(screenBuffer.getSize()).contains(clipRect)) {
+        draw_frame_impl<false>(screenBuffer, clipRect, rect, doubleEdge, attributes);
+    }
+    else {
+        draw_frame_impl<true>(screenBuffer, clipRect, rect, doubleEdge, attributes);
+    }
 
     if (fill) {
         auto innerRect = Rect(rect.topLeft + Size(1, 1), rect.bottomRight() - Size(1, 1));
         innerRect = innerRect.intersect(clipRect);
-        fill_rect(screenBuffer, innerRect, attributes.bgColor);
+        screenBuffer.fillRect(innerRect, attributes.bgColor);
     }
 }
 
@@ -419,10 +433,10 @@ void ScreenCanvas::fill(Rect rect, Color bgColor) {
     auto screenRect = rect;
     screenRect.move(m_origin.asSize());
     screenRect = screenRect.intersect(m_clipRect);
-    fill_rect(m_screenBuffer, screenRect, bgColor);
+    m_screenBuffer.fillRect(screenRect, bgColor);
 }
 
-void ScreenCanvas::rect(Rect rect, bool doubleEdge, bool fill, Attributes attributes) {
+void ScreenCanvas::fillRect(Rect rect, bool doubleEdge, bool fill, Attributes attributes) {
     auto screenRect = rect;
     screenRect.move(m_origin.asSize());
     draw_rect(m_screenBuffer, m_clipRect, screenRect, doubleEdge, fill, attributes);

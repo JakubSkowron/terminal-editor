@@ -66,7 +66,7 @@ public:
     void fill(Rect rect, Color bgColor);
 
     /// Draw rectangle.
-    void rect(Rect rect, bool doubleEdge, bool fill, Attributes attributes);
+    void fillRect(Rect rect, bool doubleEdge, bool fill, Attributes attributes);
 
     /// Draws given text on the canvas.
     /// Text is clipped to boundaries of the canvas.
@@ -131,6 +131,10 @@ public:
     /// Clears screen to given color.
     void clear(Color bgColor);
 
+    /// Draws a filled rectangle with given color.
+    /// Rectangle is first clipped to fit the scren buffer.
+    void fillRect(Rect rect, Color bgColor);
+
     /// Draws given text on the screen.
     /// Throws if text is not entirely on the screen.
     /// @param text     Input string, doesn't have to be valid or printable UTF-8.
@@ -151,10 +155,6 @@ template<int N>
 Grapheme simpleGrapheme(const char (&simpleChar)[N]) {
     return { GraphemeKind::NORMAL, simpleChar, "", 1, {simpleChar, N - 1} };
 }
-
-/// Draws a filled rectangle.
-/// Rectangle is clipped to fit the scren buffer.
-void fill_rect(ScreenBuffer& screenBuffer, Rect rect, Color bgColor);
 
 /// Draws a rectangle with borders.
 /// Rectangle is clipped by the clipRect. clipRect must be wholy inside screen buffer.

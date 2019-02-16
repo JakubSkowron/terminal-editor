@@ -49,7 +49,7 @@ void BasicWindow::drawSelf(ScreenCanvas& windowCanvas) {
     if (getWindowManager()->getFocusedWindow() == this) {
         attributes.fgColor = Color::Bright_Red;
     }
-    windowCanvas.rect(localRect, m_doubleEdge, true, attributes);
+    windowCanvas.fillRect(localRect, m_doubleEdge, true, attributes);
 
     auto messageLength = getRenderedWidth(m_message);
 
