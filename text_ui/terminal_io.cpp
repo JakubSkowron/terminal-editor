@@ -136,7 +136,39 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
         return true;
     };
 
-    auto findAction = [&onAction, &matchesAction, &matchesKey, &matchesMouse, &matchesCsi](const KeyMap& keyMap) -> tl::optional<std::string> {
+    auto matchesSs2 = [&esc](const KeyMap::KeyBinding& binding) {
+        if (esc == nullptr)
+            return false;
+
+        if (!binding.ss2)
+            return false;
+
+        if (!esc->isSS2())
+            return false;
+
+        if (*binding.ss2 != esc->ssCharacter)
+            return false;
+
+        return true;
+    };
+
+    auto matchesSs3 = [&esc](const KeyMap::KeyBinding& binding) {
+        if (esc == nullptr)
+            return false;
+
+        if (!binding.ss3)
+            return false;
+
+        if (!esc->isSS3())
+            return false;
+
+        if (*binding.ss3 != esc->ssCharacter)
+            return false;
+
+        return true;
+    };
+
+    auto findAction = [&onAction, &matchesAction, &matchesKey, &matchesMouse, &matchesCsi, &matchesSs2, &matchesSs3](const KeyMap& keyMap) -> tl::optional<std::string> {
         for (const auto& binding : keyMap.bindings) {
             if (matchesAction(binding))
                 return binding.action;
@@ -152,6 +184,12 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
                 return binding.action;
 
             if (matchesCsi(binding))
+                return binding.action;
+
+            if (matchesSs2(binding))
+                return binding.action;
+
+            if (matchesSs3(binding))
                 return binding.action;
         }
 
@@ -424,6 +462,9 @@ tl::optional<MouseEvent> extractMouseEvent(const Esc& esc) {
     return event;
 }
 
+/// Consumes one code point from the start of input string.
+/// @param txt  [In/Out] String to remove one code point from.
+/// @return Code point or error message.
 tl::expected<uint32_t, std::string> eatCodePoint(std::string& txt) {
     if (txt.empty()) {
         return tl::make_unexpected("Console input was empty.");
@@ -543,6 +584,22 @@ void InputThread::loop() {
                 if (!*secondByte) {
                     Error error { ZSTR() << "Invalid second byte of the escape sequence." };
                     event_queue.push(error);
+                    continue;
+                }
+
+                if ( (**secondByte == 'N') || (**secondByte == 'O') ){
+                    // SS2 or SS3
+                    auto codePoint = eatCodePoint(txt);
+                    if (!codePoint) {
+                        Error error { ZSTR() << ((**secondByte == 'N') ? "SS2" : "SS3") << " sequence was not followed by a code point: " << codePoint.error() };
+                        event_queue.push(error);
+                        continue;
+                    }
+
+                    Esc esc;
+                    esc.secondByte = **secondByte;
+                    appendCodePoint(esc.ssCharacter, *codePoint);
+                    event_queue.push(esc);
                     continue;
                 }
 

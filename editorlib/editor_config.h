@@ -33,6 +33,9 @@ struct KeyMap {
 
         tl::optional<CsiSequence> csi;         ///< CSI sequence that is mapped.
 
+        tl::optional<std::string> ss2;         ///< Key from alternative SS2 character set.
+        tl::optional<std::string> ss3;         ///< Key from alternative SS3 character set.
+
         std::string action;                    ///< Action for this shortcut.
     };
 

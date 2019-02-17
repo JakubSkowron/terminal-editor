@@ -110,11 +110,22 @@ struct KeyPressed {
 struct Esc {
     char secondByte;  ///< Second byte of the escape sequence.
 
+    bool isSS2() const {
+        return secondByte == 'N';
+    }
+
+    bool isSS3() const {
+        return secondByte == 'O';
+    }
+
     bool isCSI() const {
         return secondByte == '[';
     }
 
-    // Fields below are valid only CSI sequences, so if secondByte == '['.
+    // Fields below are valid only for SS2 of SS3 sequences.
+    std::string ssCharacter;
+
+    // Fields below are valid only for CSI sequences.
     std::string csiParameterBytes;
     std::string csiIntermediateBytes;
     char csiFinalByte;

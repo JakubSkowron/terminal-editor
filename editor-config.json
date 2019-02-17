@@ -147,6 +147,78 @@
                     "action": "key: ctrl-page-down"
                 },
                 {
+                    "ss3": "P",
+                    "action": "key: F1"
+                },
+                {
+                    "ss3": "Q",
+                    "action": "key: F2"
+                },
+                {
+                    "ss3": "R",
+                    "action": "key: F3"
+                },
+                {
+                    "ss3": "S",
+                    "action": "key: F4"
+                },
+                {
+                    "csi": {
+                        "params": [ 15 ],
+                        "final": "~"
+                    },
+                    "action": "key: F5"
+                },
+                {
+                    "csi": {
+                        "params": [ 17 ],
+                        "final": "~"
+                    },
+                    "action": "key: F6"
+                },
+                {
+                    "csi": {
+                        "params": [ 18 ],
+                        "final": "~"
+                    },
+                    "action": "key: F7"
+                },
+                {
+                    "csi": {
+                        "params": [ 19 ],
+                        "final": "~"
+                    },
+                    "action": "key: F8"
+                },
+                {
+                    "csi": {
+                        "params": [ 20 ],
+                        "final": "~"
+                    },
+                    "action": "key: F9"
+                },
+                {
+                    "csi": {
+                        "params": [ 21 ],
+                        "final": "~"
+                    },
+                    "action": "key: F10"
+                },
+                {
+                    "csi": {
+                        "params": [ 23 ],
+                        "final": "~"
+                    },
+                    "action": "key: F11"
+                },
+                {
+                    "csi": {
+                        "params": [ 24 ],
+                        "final": "~"
+                    },
+                    "action": "key: F12"
+                },
+                {
                     "mouseAction": "WheelUp",
                     "action": "key: wheel-up"
                 },

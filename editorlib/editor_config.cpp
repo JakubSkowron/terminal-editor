@@ -73,6 +73,13 @@ void to_json(nlohmann::json& json, const KeyMap::KeyBinding& keyBinding) {
         json["csi"] = *keyBinding.csi;
     }
 
+    if (keyBinding.ss2) {
+        json["ss2"] = *keyBinding.ss2;
+    }
+    if (keyBinding.ss3) {
+        json["ss3"] = *keyBinding.ss3;
+    }
+
     json["action"] = keyBinding.action;
 }
 
@@ -93,6 +100,13 @@ void from_json(const nlohmann::json& json, KeyMap::KeyBinding& keyBinding) {
 
     if (hasKey(json, "csi"))
         keyBinding.csi = json["csi"].get<KeyMap::CsiSequence>();
+
+    keyBinding.ss2 = tl::nullopt;
+    if (hasKey(json, "ss2"))
+        keyBinding.ss2 = json["ss2"].get<std::string>();
+    keyBinding.ss3 = tl::nullopt;
+    if (hasKey(json, "ss3"))
+        keyBinding.ss3 = json["ss3"].get<std::string>();
 
     keyBinding.action = json["action"].get<std::string>();
 }
