@@ -144,6 +144,11 @@ public:
         }
     }
 
+    /// Returns name of the input context used to process key maps.
+    virtual std::string getInputContextName() const {
+        return "global";
+    }
+
     /// @param text     Valid UTF-8 string input.
     bool processTextInput(const std::string& text) {
         if (m_parent) {

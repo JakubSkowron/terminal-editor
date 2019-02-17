@@ -116,13 +116,15 @@ int main() {
 
                 auto e = *event;
 
-                auto action = getActionForEvent("global", e, getEditorConfig());
+                auto focusedWindow = windowManager.getFocusedWindow();
+                auto activeWindow = focusedWindow.value_or(rootWindow);
+                auto inputContextName = activeWindow->getInputContextName();
+
+                auto action = getActionForEvent(inputContextName, e, getEditorConfig());
                 if (action) {
                     //LOG() << "Action: " << *action;
                     push_line(*action);
 
-                    auto focusedWindow = windowManager.getFocusedWindow();
-                    auto activeWindow = focusedWindow.value_or(rootWindow);
                     if (activeWindow->processAction(*action))
                         continue;
 

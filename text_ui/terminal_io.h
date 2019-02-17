@@ -138,8 +138,8 @@ struct MouseEvent {
         LMBDrag = 32,
         MMBDrag = 33,
         RMBDrag = 34,
-        WheelDown = 64,
-        WheelUp = 65,
+        WheelUp = 64,
+        WheelDown = 65,
     };
     Kind kind;
     Point position;

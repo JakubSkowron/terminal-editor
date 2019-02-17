@@ -40,6 +40,10 @@ private:
     void drawSelf(ScreenCanvas& windowCanvas) override;
 
 protected:
+    std::string getInputContextName() const override {
+        return "text-editor";
+    }
+        
     bool doProcessAction(const std::string& action) override;
 
     bool doProcessTextInput(const std::string& text) override;

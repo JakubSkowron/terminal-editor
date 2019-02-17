@@ -34,34 +34,48 @@ int mouseY = 0;
 
 tl::optional<std::string> getActionForEvent(const std::string& contextName, const Event& event, const EditorConfig& editorConfig) {
     // Check if there is a key map for current context. Fallback to "global" if not found.
-    const KeyMap* keyMap = nullptr;
+    const KeyMap* startKeyMap = nullptr;
     if (editorConfig.keyMaps.count(contextName) > 0) {
-        keyMap = &editorConfig.keyMaps.at(contextName);
+        startKeyMap = &editorConfig.keyMaps.at(contextName);
     }
     else
     if (editorConfig.keyMaps.count("global") > 0) {
-        keyMap = &editorConfig.keyMaps.at("global");
+        startKeyMap = &editorConfig.keyMaps.at("global");
     } else {
         return tl::nullopt;
     }
 
     // Currently we support only keyboard shortcuts, mouse events, and CSI escape sequences (in a limited way).
 
+    tl::optional<std::string> onAction;
     const KeyPressed* keyEvent = std::get_if<KeyPressed>(&event);
     const MouseEvent* mouseEvent = std::get_if<MouseEvent>(&event);
     const Esc* esc = std::get_if<Esc>(&event);
 
-    if ((keyEvent == nullptr) && (mouseEvent == nullptr) && (esc == nullptr))
+    if ((keyEvent == nullptr) && (mouseEvent == nullptr) && (esc == nullptr) && (!onAction))
         return tl::nullopt;
+
+    auto matchesAction = [&onAction](const KeyMap::KeyBinding& binding) {
+        if (!onAction)
+            return false;
+
+        if (!binding.onAction)
+            return false;
+
+        if (*binding.onAction != *onAction)
+            return false;
+
+        return true;
+    };
 
     auto matchesKey = [&keyEvent](const KeyMap::KeyBinding& binding) {
         if (keyEvent == nullptr)
             return false;
 
-        if (binding.ctrl != keyEvent->wasCtrlHeld())
+        if (binding.ctrl && !keyEvent->wasCtrlHeld())
             return false;
 
-        if (binding.key != keyEvent->getUtf8(true))
+        if (binding.key != keyEvent->getUtf8(binding.ctrl))
             return false;
 
         return true;
@@ -71,13 +85,16 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
         if (mouseEvent == nullptr)
             return false;
 
-        if (!binding.mouseButton)
+        if (!binding.mouseAction)
             return false;
 
-        if (static_cast<int>(*binding.mouseButton) != static_cast<int>(mouseEvent->kind))
-            return false;
+        if ((*binding.mouseAction == KeyMap::MouseAction::WheelUp) && (mouseEvent->kind == MouseEvent::Kind::WheelUp))
+            return true;
 
-        return true;
+        if ((*binding.mouseAction == KeyMap::MouseAction::WheelDown) && (mouseEvent->kind == MouseEvent::Kind::WheelDown))
+            return true;
+
+        return false;
     };
 
     const std::regex paramsRegex("(?:([0-9]*)(?:;([0-9]*))*)?");
@@ -119,8 +136,15 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
         return true;
     };
 
-    auto findAction = [&matchesKey, &matchesMouse, &matchesCsi](const KeyMap& keyMap) -> tl::optional<std::string> {
+    auto findAction = [&onAction, &matchesAction, &matchesKey, &matchesMouse, &matchesCsi](const KeyMap& keyMap) -> tl::optional<std::string> {
         for (const auto& binding : keyMap.bindings) {
+            if (matchesAction(binding))
+                return binding.action;
+
+            // If we have an action to translate, we don't look at anything else.
+            if (onAction)
+                continue;
+
             if (matchesKey(binding))
                 return binding.action;
 
@@ -134,13 +158,32 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
         return tl::nullopt;
     };
 
+    std::vector<std::string> matchedActions;
+    const KeyMap* keyMap = startKeyMap;
     while (true) {
         auto action = findAction(*keyMap);
-        if (action)
-            return action;
+        if (action) {
+            auto position = std::find(matchedActions.begin(), matchedActions.end(), *action);
+            if (position != matchedActions.end()) {
+                std::stringstream ss;
+                for (auto matchedAction : matchedActions) {
+                    ss << matchedAction << " -> ";
+                }
+                ZTHROW() << "Circular action chain: " << ss.str() << "-> " << *action;
+            }
 
-        if (!keyMap->parent)
+            matchedActions.push_back(*action);
+            onAction = *action;
+            keyMap = startKeyMap;
+            continue;
+        }
+
+        if (!keyMap->parent) {
+            if (!matchedActions.empty()) {
+                return matchedActions.back();
+            }
             return tl::nullopt;
+        }
 
         ZASSERT(editorConfig.keyMaps.count(*keyMap->parent) > 0) << "Key map not found: " << *keyMap->parent;
         keyMap = &editorConfig.keyMaps.at(*keyMap->parent);
@@ -420,6 +463,7 @@ void InputThread::loop() {
 
         auto& txt = *txtopt;
 
+        // @todo This processing is probably not too good, as some network buffering might split escape sequences into more reads than one.
         while (!txt.empty()) {
             // Eat normal inputs.
             while (true) {
@@ -436,8 +480,13 @@ void InputThread::loop() {
                 // Move to processing escape sequence.
                 if (*codePoint == 0x1b) {
                     if (txt.empty()) {
-                        Error error { ZSTR() << "No second byte of the escape sequence." };
-                        event_queue.push(error);
+                        //Error error { ZSTR() << "No second byte of the escape sequence." };
+                        //event_queue.push(error);
+
+                        // Raw ESC key pressed.
+                        KeyPressed keyEvent;
+                        keyEvent.codePoint = *codePoint;
+                        event_queue.push(keyEvent);
                     }
                     break;
                 }

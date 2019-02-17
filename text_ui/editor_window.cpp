@@ -142,7 +142,26 @@ void EditorWindow::updateViewPosition() {
 }
 
 bool EditorWindow::doProcessAction(const std::string& action) {
-    if (action == "page-up") {
+    if (action == "cursor-document-start") {
+        // @note Virtual position will become concrete.
+        m_editCursorPosition = Position{0, 0};
+        m_virtualCursorPosition = m_graphemeBuffer.positionToPoint(m_editCursorPosition);
+
+        updateViewPosition();
+        return true;
+    }
+
+    if (action == "cursor-document-end") {
+        // @note Virtual position will become concrete.
+        m_editCursorPosition = Position{std::numeric_limits<int>::max(), std::numeric_limits<int>::max()};
+        m_editCursorPosition = m_graphemeBuffer.clampPosition(m_editCursorPosition);
+        m_virtualCursorPosition = m_graphemeBuffer.positionToPoint(m_editCursorPosition);
+
+        updateViewPosition();
+        return true;
+    }
+
+    if (action == "cursor-page-up") {
         // @note Virtual position will become concrete.
         m_editCursorPosition.row -= getRect().size.height - 2 - 1;
         m_editCursorPosition = m_graphemeBuffer.clampPosition(m_editCursorPosition);
@@ -152,7 +171,7 @@ bool EditorWindow::doProcessAction(const std::string& action) {
         return true;
     }
 
-    if (action == "page-down") {
+    if (action == "cursor-page-down") {
         // @note Virtual position will become concrete.
         m_editCursorPosition.row += getRect().size.height - 2 - 1;
         m_editCursorPosition = m_graphemeBuffer.clampPosition(m_editCursorPosition);
@@ -162,7 +181,7 @@ bool EditorWindow::doProcessAction(const std::string& action) {
         return true;
     }
 
-    if (action == "home") {
+    if (action == "cursor-line-start") {
         // @note Virtual position will become concrete.
         m_editCursorPosition.column = 0;
         m_virtualCursorPosition = m_graphemeBuffer.positionToPoint(m_editCursorPosition);
@@ -171,7 +190,7 @@ bool EditorWindow::doProcessAction(const std::string& action) {
         return true;
     }
 
-    if (action == "end") {
+    if (action == "cursor-line-end") {
         // @note Virtual position will become concrete.
         m_editCursorPosition.column = std::numeric_limits<int>::max();
         m_editCursorPosition = m_graphemeBuffer.clampPosition(m_editCursorPosition);
@@ -181,7 +200,7 @@ bool EditorWindow::doProcessAction(const std::string& action) {
         return true;
     }
 
-    if (action == "left") {
+    if (action == "cursor-left") {
         // @note Virtual position will become concrete.
         m_editCursorPosition = moveCursorLeftRight(m_graphemeBuffer, m_editCursorPosition, -1);
         m_virtualCursorPosition = m_graphemeBuffer.positionToPoint(m_editCursorPosition);
@@ -190,7 +209,7 @@ bool EditorWindow::doProcessAction(const std::string& action) {
         return true;
     }
 
-    if (action == "right") {
+    if (action == "cursor-right") {
         // @note Virtual position will become concrete.
         m_editCursorPosition = moveCursorLeftRight(m_graphemeBuffer, m_editCursorPosition, 1);
         m_virtualCursorPosition = m_graphemeBuffer.positionToPoint(m_editCursorPosition);
@@ -199,7 +218,7 @@ bool EditorWindow::doProcessAction(const std::string& action) {
         return true;
     }
 
-    if (action == "up") {
+    if (action == "cursor-up") {
         // @note We don't change virtual column here.
         m_virtualCursorPosition.y -= 1;
         m_editCursorPosition = m_graphemeBuffer.pointToPosition(m_virtualCursorPosition, false);
@@ -209,7 +228,7 @@ bool EditorWindow::doProcessAction(const std::string& action) {
         return true;
     }
 
-    if (action == "down") {
+    if (action == "cursor-down") {
         // @note We don't change virtual column here.
         m_virtualCursorPosition.y += 1;
         m_editCursorPosition = m_graphemeBuffer.pointToPosition(m_virtualCursorPosition, false);
@@ -219,12 +238,35 @@ bool EditorWindow::doProcessAction(const std::string& action) {
         return true;
     }
 
+    if (action == "view-wheel-up") {
+        m_topLeftPosition.y -= getEditorConfig().mouseWheelScrollLines;
+        if (m_topLeftPosition.y < 0)
+            m_topLeftPosition.y = 0;
+        return true;
+    }
+
+    if (action == "view-wheel-down") {
+        m_topLeftPosition.y += getEditorConfig().mouseWheelScrollLines;
+        if (m_topLeftPosition.y >= m_graphemeBuffer.getNumberOfLines())
+            m_topLeftPosition.y = m_graphemeBuffer.getNumberOfLines() - 1;
+        return true;
+    }
+
     if (action == "text-backspace") {
         // @note Virtual position will become concrete.
         auto startPosition = moveCursorLeftRight(m_graphemeBuffer, m_editCursorPosition, -1);
         m_graphemeBuffer.deleteText(startPosition, m_editCursorPosition);
         m_editCursorPosition = startPosition;
         m_virtualCursorPosition = m_graphemeBuffer.positionToPoint(m_editCursorPosition);
+
+        updateViewPosition();
+        return true;
+    }
+
+    if (action == "text-tab") {
+        // @note Virtual position will become concrete.
+        std::string tab(getEditorConfig().tabWidh, ' ');
+        doProcessTextInput(tab);
 
         updateViewPosition();
         return true;
@@ -240,7 +282,7 @@ bool EditorWindow::doProcessAction(const std::string& action) {
         return true;
     }
 
-    if (action == "enter") {
+    if (action == "text-new-line") {
         doProcessTextInput("\n");
 
         updateViewPosition();

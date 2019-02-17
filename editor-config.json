@@ -1,18 +1,173 @@
 {
-    "tabWidh": 3,
+    "tabWidh": 4,
+    "mouse-wheel-scroll-lines": 1,
     "keyMaps": {
-        "global": {
-            "name": "global",
+        "virtual-keys": {
             "bindings": [
                 {
-                    "key": "M",
-                    "ctrl": true,
-                    "action": "enter"
+                    "key": "\u000D",
+                    "action": "key: enter"
                 },
+                {
+                    "key": "\u001B",
+                    "action": "key: escape"
+                },
+                {
+                    "key": "\u0009",
+                    "action": "key: tab"
+                },
+                {
+                    "key": "\u007F",
+                    "action": "key: backspace"
+                },
+                {
+                    "csi": { "final": "A" },
+                    "action": "key: up"
+                },
+                {
+                    "csi": { "final": "B" },
+                    "action": "key: down"
+                },
+                {
+                    "csi": { "final": "D" },
+                    "action": "key: left"
+                },
+                {
+                    "csi": { "final": "C" },
+                    "action": "key: right"
+                },
+                {
+                    "csi": {
+                        "params": [ 2 ],
+                        "final": "~"
+                    },
+                    "action": "key: insert"
+                },
+                {
+                    "csi": {
+                        "params": [ 3 ],
+                        "final": "~"
+                    },
+                    "action": "key: delete"
+                },
+                {
+                    "csi": {
+                        "params": [ 2, 5 ],
+                        "final": "~"
+                    },
+                    "action": "key: ctrl-insert"
+                },
+                {
+                    "csi": {
+                        "params": [ 3, 5 ],
+                        "final": "~"
+                    },
+                    "action": "key: ctrl-delete"
+                },
+                {
+                    "csi": {
+                        "params": [ 2, 2 ],
+                        "final": "~"
+                    },
+                    "action": "key: shift-insert"
+                },
+                {
+                    "csi": {
+                        "params": [ 3, 2 ],
+                        "final": "~"
+                    },
+                    "action": "key: shift-delete"
+                },
+                {
+                    "csi": {
+                        "final": "H"
+                    },
+                    "action": "key: home"
+                },
+                {
+                    "csi": {
+                        "final": "F"
+                    },
+                    "action": "key: end"
+                },
+                {
+                    "csi": {
+                        "params": [ 1 ],
+                        "final": "~"
+                    },
+                    "action": "key: home"
+                },
+                {
+                    "csi": {
+                        "params": [ 4 ],
+                        "final": "~"
+                    },
+                    "action": "key: end"
+                },
+                {
+                    "csi": {
+                        "params": [ 1, 5 ],
+                        "final": "H"
+                    },
+                    "action": "key: ctrl-home"
+                },
+                {
+                    "csi": {
+                        "params": [ 1, 5 ],
+                        "final": "F"
+                    },
+                    "action": "key: ctrl-end"
+                },
+                {
+                    "csi": {
+                        "params": [ 5 ],
+                        "final": "~"
+                    },
+                    "action": "key: page-up"
+                },
+                {
+                    "csi": {
+                        "params": [ 6 ],
+                        "final": "~"
+                    },
+                    "action": "key: page-down"
+                },
+                {
+                    "csi": {
+                        "params": [ 5, 5 ],
+                        "final": "~"
+                    },
+                    "action": "key: ctrl-page-up"
+                },
+                {
+                    "csi": {
+                        "params": [ 6, 5 ],
+                        "final": "~"
+                    },
+                    "action": "key: ctrl-page-down"
+                },
+                {
+                    "mouseAction": "WheelUp",
+                    "action": "key: wheel-up"
+                },
+                {
+                    "mouseAction": "WheelDown",
+                    "action": "key: wheel-down"
+                }
+            ]
+        },
+        "global": {
+            "parent": "virtual-keys",
+            "bindings": [
                 {
                     "key": "Q",
                     "ctrl": true,
                     "action": "quit"
+                },
+                {
+                    "key": "L",
+                    "ctrl": true,
+                    "action": "load"
                 },
                 {
                     "key": "A",
@@ -27,59 +182,6 @@
                     "key": "C",
                     "ctrl": true,
                     "action": "close"
-                },
-                {
-                    "key": "L",
-                    "ctrl": true,
-                    "action": "load"
-                },
-                {
-                    "csi": { "final": "A" },
-                    "action": "up"
-                },
-                {
-                    "csi": { "final": "B" },
-                    "action": "down"
-                },
-                {
-                    "csi": { "final": "D" },
-                    "action": "left"
-                },
-                {
-                    "csi": { "final": "C" },
-                    "action": "right"
-                },
-                {
-                    "csi": { "final": "H" },
-                    "action": "home"
-                },
-                {
-                    "csi": { "final": "F" },
-                    "action": "end"
-                },
-                {
-                    "csi": { "params": [ 1 ], "final": "~" },
-                    "action": "home"
-                },
-                {
-                    "csi": { "params": [ 4 ], "final": "~" },
-                    "action": "end"
-                },
-                {
-                    "csi": { "params": [ 5 ], "final": "~" },
-                    "action": "page-up"
-                },
-                {
-                    "csi": { "params": [ 6 ], "final": "~" },
-                    "action": "page-down"
-                },
-                {
-                    "csi": { "params": [ 5, 5 ], "final": "~" },
-                    "action": "ctrl-page-up"
-                },
-                {
-                    "csi": { "params": [ 6, 5 ], "final": "~" },
-                    "action": "ctrl-page-down"
                 },
                 {
                     "key": "W",
@@ -100,14 +202,87 @@
                     "key": "D",
                     "ctrl": true,
                     "action": "size-right"
+                }
+            ]
+        },
+        "text-editor": {
+            "parent": "global",
+            "bindings": [
+                {
+                    "key": "\u0000",
+                    "action": "hack-ignore-null"
                 },
                 {
-                    "csi": { "params": [ 3 ], "final": "~" },
+                    "onAction": "key: enter",
+                    "action": "text-new-line"
+                },
+                {
+                    "onAction": "key: tab",
+                    "action": "text-tab"
+                },
+                {
+                    "onAction": "key: delete",
                     "action": "text-delete"
                 },
                 {
-                    "key": "\u007F",
+                    "onAction": "key: backspace",
                     "action": "text-backspace"
+                },
+                {
+                    "onAction": "key: up",
+                    "action": "cursor-up"
+                },
+                {
+                    "onAction": "key: down",
+                    "action": "cursor-down"
+                },
+                {
+                    "onAction": "key: left",
+                    "action": "cursor-left"
+                },
+                {
+                    "onAction": "key: right",
+                    "action": "cursor-right"
+                },
+                {
+                    "onAction": "key: home",
+                    "action": "cursor-line-start"
+                },
+                {
+                    "onAction": "key: end",
+                    "action": "cursor-line-end"
+                },
+                {
+                    "onAction": "key: page-up",
+                    "action": "cursor-page-up"
+                },
+                {
+                    "onAction": "key: page-down",
+                    "action": "cursor-page-down"
+                },
+                {
+                    "onAction": "key: ctrl-page-up",
+                    "action": "cursor-document-start"
+                },
+                {
+                    "onAction": "key: ctrl-page-down",
+                    "action": "cursor-document-end"
+                },
+                {
+                    "onAction": "key: ctrl-home",
+                    "action": "cursor-document-start"
+                },
+                {
+                    "onAction": "key: ctrl-end",
+                    "action": "cursor-document-end"
+                },
+                {
+                    "onAction": "key: wheel-up",
+                    "action": "view-wheel-up"
+                },
+                {
+                    "onAction": "key: wheel-down",
+                    "action": "view-wheel-down"
                 }
             ]
         }
