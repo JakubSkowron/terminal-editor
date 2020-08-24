@@ -7,6 +7,7 @@
 #include "editor_config.h"
 #include "text_parser.h"
 #include "geometry.h"
+#include "console_reader.h"
 #include "zstr.h"
 
 #include <condition_variable>
@@ -24,9 +25,6 @@
 #endif
 
 namespace terminal_editor {
-
-extern int mouseX;
-extern int mouseY;
 
 /* Turns echo and canonical mode off, enter raw mode. */
 class TerminalRawMode {
@@ -135,7 +133,11 @@ struct Esc {
 
 /// Error event describes any kind of error while processing event read from the terminal. Usually a malformed or unknown escape sequence, or invalid character.
 struct Error {
-    std::string msg;    ///< UTF-8 string.
+    std::string msg;    ///< UTF-8 string with error message.
+};
+
+/// BrokenInput event is sent when reading of input was stopped (due to error or normally). In that case the only thing we can do is quit.
+struct BrokenInput {
 };
 
 /// Event sent when console window size changes. Is an input event, as editor must react to it.
@@ -178,7 +180,7 @@ inline std::ostream& operator<<(std::ostream& os, MouseEvent::Kind kind) {
 }
 
 /// This type defines all kinds of input events editor can respond to.
-using Event = std::variant<KeyPressed, Esc, Error, WindowSize, MouseEvent>;
+using Event = std::variant<KeyPressed, Esc, Error, BrokenInput, WindowSize, MouseEvent>;
 
 /// Returns action that is bound to given Event.
 /// @param contextName      Name of the key map to use.
@@ -200,19 +202,18 @@ private:
     std::mutex mutex;
 };
 
-// Pushes input events to EventQueue
+// Pushes input events to EventQueue.
 class InputThread {
 public:
-    // TODO: should InputThread get ownership of queue? Probably no.
     InputThread(EventQueue& event_queue);
     ~InputThread();
 
 private:
-    EventQueue& event_queue; // should be declared before thread
-    std::thread thread;
+    std::unique_ptr<InterruptibleConsoleReader> console_reader;
+    EventQueue& event_queue; ///< Should be declared before thread, to make sure it is ready when thread starts.
+    std::thread thread;      ///< This must be last to make sure we don't leak a thread if initialization fails.
 
-    void loop();
-    bool break_loop = false;
+    void loop();             ///< Thread function.
 };
 
 } // namespace terminal_editor

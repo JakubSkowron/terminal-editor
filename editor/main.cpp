@@ -147,7 +147,7 @@ int main() {
                         screenBuffer.present();
                         std::this_thread::sleep_for(1s);
 
-                        //std::cout << "Bye." << std::endl;
+                        LOG() << "Bye.";
                         return 0;
                     }
                 }
@@ -199,6 +199,11 @@ int main() {
                     std::string message = "Error ";
                     message += error->msg;
                     push_line(message);
+                }
+                else
+                if (auto brokenInput = std::get_if<BrokenInput>(&e)) {
+                    LOG() << "Input broken.";
+                    return -1;
                 }
                 else
                 if (auto mouseEvent = std::get_if<MouseEvent>(&e)) {
