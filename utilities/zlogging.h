@@ -5,6 +5,10 @@
 #include <iostream>
 #include <sstream>
 
+#ifdef WIN32
+#include <windows.h>
+#endif
+
 /// Usage:
 /// LOG() << "Memory usage: " << 5;         - equivalent to LOG(INFO)
 ///
@@ -57,10 +61,12 @@ public:
 
     ~LogHelper() noexcept(false) {
         auto messageStr = message.str();
-        //if ( (logLevel == LogLevel::ERROR) || (logLevel == LogLevel::WARNING) )
-            std::cerr << messageStr << std::endl;
-        //else
-        //    std::cout << messageStr << std::endl;
+        std::cerr << messageStr << std::endl;
+
+#ifdef WIN32
+        OutputDebugStringA(messageStr.c_str());
+        OutputDebugStringA("\n");
+#endif
     }
 };
 
