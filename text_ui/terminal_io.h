@@ -63,6 +63,7 @@ public:
     ~MouseTracking();
 };
 
+/// KeyPressed describes normal keyboard key press event from the terminal. Not a special control sequence.
 struct KeyPressed {
     uint32_t codePoint; ///< Unicode code point.
 
@@ -107,6 +108,7 @@ struct KeyPressed {
     }
 };
 
+/// KeyPressed describes a special control sequence sent from the terminal.
 struct Esc {
     char secondByte;  ///< Second byte of the escape sequence.
 
@@ -131,15 +133,18 @@ struct Esc {
     char csiFinalByte;
 };
 
+/// Error event describes any kind of error while processing event read from the terminal. Usually a malformed or unknown escape sequence, or invalid character.
 struct Error {
     std::string msg;    ///< UTF-8 string.
 };
 
+/// Event sent when console window size changes. Is an input event, as editor must react to it.
 struct WindowSize {
     int width;
     int height;
 };
 
+/// Event generated from a mouse action.
 struct MouseEvent {
     enum class Kind {
         LMB = 0,
@@ -172,6 +177,7 @@ inline std::ostream& operator<<(std::ostream& os, MouseEvent::Kind kind) {
     }
 }
 
+/// This type defines all kinds of input events editor can respond to.
 using Event = std::variant<KeyPressed, Esc, Error, WindowSize, MouseEvent>;
 
 /// Returns action that is bound to given Event.
@@ -183,7 +189,9 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
 class EventQueue {
 public:
     void push(Event e);
-    // locking function
+    
+    /// Returns one event from the queue.
+    /// @param block    If true the function will not return until an event is available. Otherwise it will return none if event is not available.
     tl::optional<Event> poll(bool block);
 
 private:

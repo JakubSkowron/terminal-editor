@@ -359,13 +359,14 @@ tl::optional<std::string> readConsole() {
         ZHARDASSERT(false) << "Could not get console input handle: " << GetLastError();
 
     // @todo Read all available characters.
+    const int ReadBufferSize = 1024;
     DWORD cNumRead;
-    INPUT_RECORD irInBuf[1024];
+    INPUT_RECORD irInBuf[ReadBufferSize];
 
-    if (!ReadConsoleInput(hStdin,     // input buffer handle
-                          irInBuf,    // buffer to read into
-                          1024,        // size of read buffer
-                          &cNumRead)) // number of records read
+    if (!ReadConsoleInput(hStdin,           // input buffer handle
+                          irInBuf,          // buffer to read into
+                          ReadBufferSize,   // size of read buffer
+                          &cNumRead))       // number of records read
     {
         ZHARDASSERT(false) << "Could not read input from console: " << GetLastError();
     }
@@ -485,7 +486,9 @@ tl::expected<uint32_t, std::string> eatCodePoint(std::string& txt) {
     return codePoint.codePoint;
 }
 
-// TODO: consider non-blocking IO (or poll/select) and a joinable thread
+// @todo Use non-blocking IO (or poll/select) to be able to join this thread in destructor.
+// @todo Processing of escape seqauences should read input as long as there is a possibility that it might be a valid escape sequence.
+//       As it is now (just assuming that every escape sequence is delivered in whole) is not correct.
 void InputThread::loop() {
     while (true) {
         auto txtopt = readConsole();
@@ -523,8 +526,8 @@ void InputThread::loop() {
                 // Move to processing escape sequence.
                 if (*codePoint == 0x1b) {
                     if (txt.empty()) {
-                        //Error error { ZSTR() << "No second byte of the escape sequence." };
-                        //event_queue.push(error);
+                        Error error { ZSTR() << "No second byte of the escape sequence." };
+                        event_queue.push(error);
 
                         // Raw ESC key pressed.
                         KeyPressed keyEvent;
