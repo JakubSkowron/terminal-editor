@@ -48,7 +48,7 @@ KeyMap::MouseAction from_string(const std::string& mouseAction);
 
 /// Structure that contains editor configuration.
 struct EditorConfig {
-    int tabWidh = 4;                       ///< How many characters should tabulator take on screen.
+    int tabWidth = 4;                       ///< How many characters should tabulator take on screen.
     int mouseWheelScrollLines = 3;         ///< How many lines should a mouse wheel scroll move by.
     std::map<std::string, KeyMap> keyMaps; ///< KeyMaps that define keyboard/mouse shortcuts.
 };

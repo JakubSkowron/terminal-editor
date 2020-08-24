@@ -265,7 +265,7 @@ bool EditorWindow::doProcessAction(const std::string& action) {
 
     if (action == "text-tab") {
         // @note Virtual position will become concrete.
-        std::string tab(getEditorConfig().tabWidh, ' ');
+        std::string tab(getEditorConfig().tabWidth, ' ');
         doProcessTextInput(tab);
 
         updateViewPosition();

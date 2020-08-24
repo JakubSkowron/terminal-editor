@@ -131,7 +131,7 @@ void from_json(const nlohmann::json& json, KeyMap& keyMap) {
 
 /// Serializes EditorConfig to json.
 void to_json(nlohmann::json& json, const EditorConfig& editorConfig) {
-    json["tabWidh"] = editorConfig.tabWidh;
+    json["tabWidth"] = editorConfig.tabWidth;
     json["mouse-wheel-scroll-lines"] = editorConfig.mouseWheelScrollLines;
     
     json["keyMaps"] = editorConfig.keyMaps;
@@ -139,7 +139,7 @@ void to_json(nlohmann::json& json, const EditorConfig& editorConfig) {
 
 /// Deserializes EditorConfig from json.
 void from_json(const nlohmann::json& json, EditorConfig& editorConfig) {
-    editorConfig.tabWidh = json.value("tabWidh", editorConfig.tabWidh);
+    editorConfig.tabWidth = json.value("tabWidth", editorConfig.tabWidth);
     editorConfig.keyMaps = json.value("keyMaps", editorConfig.keyMaps);
     for (auto& kv : editorConfig.keyMaps) {
         kv.second.name = kv.first;
