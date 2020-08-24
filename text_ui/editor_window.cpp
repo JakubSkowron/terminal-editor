@@ -1,6 +1,7 @@
 #include "editor_window.h"
 
 #include <limits>
+#include <cwctype>
 
 namespace terminal_editor {
 
@@ -92,6 +93,108 @@ Position moveCursorLeftRight(const GraphemeBuffer& graphemeBuffer, Position posi
             graphemeDelta++;  // Eat one position for moving to the other row.
             position.column = std::numeric_limits<int>::max();
         }
+    }
+
+    return position;
+}
+
+/// Returns a "character class" of a grapheme for the purpose of next/previous word navigation.
+/// Next/previous word will be at the boundary where character class changes.
+/// @todo Make this configurable via settings.
+/// Returned character classes:
+///  0 - invalid grapheme
+///  1 - replacement grapheme
+///  2 - any of the code points is alpha-numeric (implementation needs improvement)
+///  3 - everything else.
+int getCharacterClass(const Grapheme& grapheme) {
+    if (grapheme.kind == GraphemeKind::INVALID) {
+        return 0;
+    }
+    if (grapheme.kind == GraphemeKind::REPLACEMENT) {
+        return 1;
+    }
+
+    auto codePointInfos = parseLine(grapheme.rendered);
+    bool hasAlNum = false;
+    for (auto codePointInfo : codePointInfos) {
+        ZASSERT(codePointInfo.valid) << "Grapheme.rendered should be a valid UTF-8 string: " << codePointInfo.info;
+
+        // @todo This is a hack. Needs fixing.
+        if (std::iswalnum(static_cast<std::wint_t>(static_cast<wchar_t>(codePointInfo.codePoint)))) {
+            hasAlNum = true;
+            break;
+        }
+    }
+
+    if (hasAlNum) {
+        return 3;
+    }
+
+    return 4;
+}
+
+/// Move cursor by one chunk of characters of the same type, wrapping at end and beginning of lines.
+[[nodiscard]]
+Position moveWordLeftRight(const GraphemeBuffer& graphemeBuffer, Position position, bool right) {
+    // Move to target column, wrapping at end and beginning of lines.
+    tl::optional<int> characterClass;
+    while (true) {
+        // Make the position valid, so that wrapping at end and beginning of lines will work predictably.
+        position = graphemeBuffer.clampPosition(position);
+
+        // Move by delta.
+        auto oldPosition = position;
+        position.column += right ? 1 : -1;
+        position = graphemeBuffer.clampPosition(position);
+
+        auto movedBy = position.column - oldPosition.column;
+        // If not moved, try to change row - and that will be all.
+        if (movedBy == 0) {
+            // Change row.
+            auto rowPosition = position;
+            if (right) {
+                position.row++;
+            } else {
+                position.row--;
+            }
+            position = graphemeBuffer.clampPosition(position);
+
+            // If row did not change we're at the beginning or end of text, so we're done.
+            if (position.row == rowPosition.row)
+                break;
+
+            // Change column to beginning or end of line.
+            if (right) {
+                position.column = 0;
+            } else {
+                position.column = std::numeric_limits<int>::max();
+            }
+            position = graphemeBuffer.clampPosition(position);
+            break;
+        }
+
+        // We did move by one character.
+        auto graphemesUnderCursor = graphemeBuffer.getLineRange(position.row, position.column, position.column + 1);
+        // If we got to the end of line - we're done.
+        if (graphemesUnderCursor.size() == 0) {
+            break;
+        }
+        ZASSERT(graphemesUnderCursor.size() == 1);
+
+        const auto& grapheme = graphemesUnderCursor[0];
+        auto characterClassUnderCursor = getCharacterClass(grapheme);
+
+        // If we don't have a character class - we store one.
+        if (!characterClass) {
+            characterClass = characterClassUnderCursor;
+            continue;
+        }
+
+        // If we have a character class, but it's different than before - we're done.
+        if (characterClassUnderCursor != *characterClass)
+            break;
+
+        // If we have a character class, and it's the same as before - move further.
     }
 
     return position;
@@ -212,6 +315,24 @@ bool EditorWindow::doProcessAction(const std::string& action) {
     if (action == "cursor-right") {
         // @note Virtual position will become concrete.
         m_editCursorPosition = moveCursorLeftRight(m_graphemeBuffer, m_editCursorPosition, 1);
+        m_virtualCursorPosition = m_graphemeBuffer.positionToPoint(m_editCursorPosition);
+
+        updateViewPosition();
+        return true;
+    }
+
+    if (action == "cursor-word-left") {
+        // @note Virtual position will become concrete.
+        m_editCursorPosition = moveWordLeftRight(m_graphemeBuffer, m_editCursorPosition, false);
+        m_virtualCursorPosition = m_graphemeBuffer.positionToPoint(m_editCursorPosition);
+
+        updateViewPosition();
+        return true;
+    }
+
+    if (action == "cursor-word-right") {
+        // @note Virtual position will become concrete.
+        m_editCursorPosition = moveWordLeftRight(m_graphemeBuffer, m_editCursorPosition, true);
         m_virtualCursorPosition = m_graphemeBuffer.positionToPoint(m_editCursorPosition);
 
         updateViewPosition();

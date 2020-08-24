@@ -37,6 +37,22 @@
                     "action": "key: right"
                 },
                 {
+                    "csi": { "params": [1, 5], "final": "A" },
+                    "action": "key: ctrl-up"
+                },
+                {
+                    "csi": { "params": [1, 5], "final": "B" },
+                    "action": "key: ctrl-down"
+                },
+                {
+                    "csi": { "params": [1, 5], "final": "D" },
+                    "action": "key: ctrl-left"
+                },
+                {
+                    "csi": { "params": [1, 5], "final": "C" },
+                    "action": "key: ctrl-right"
+                },
+                {
                     "csi": {
                         "params": [ 2 ],
                         "final": "~"
@@ -347,6 +363,14 @@
                 {
                     "onAction": "key: ctrl-end",
                     "action": "cursor-document-end"
+                },
+                {
+                    "onAction": "key: ctrl-left",
+                    "action": "cursor-word-left"
+                },
+                {
+                    "onAction": "key: ctrl-right",
+                    "action": "cursor-word-right"
                 },
                 {
                     "onAction": "key: wheel-up",
