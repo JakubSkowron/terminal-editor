@@ -23,6 +23,17 @@ struct KeyMap {
         char finalByte;             ///< Final byte of the CSI sequence.
     };
 
+    /// KeyBinding specifies what action should be performed when some input is given.
+    /// The action will match if any of the following matches:
+    ///   - onAction,
+    ///   - keyboard key,
+    ///   - mouse event,
+    ///   - CSI sequence,
+    ///   - SS2 character,
+    ///   - SS3 character.
+    ///  @note Once an input is translated into an action, inputs are never again considered when translating the action further.
+    ///        So once any action was resolved, only onAction bindings matter. All other bindings are ignored.
+    ///        This makes processing of hierarchical KeyMaps sane.
     struct KeyBinding {
         tl::optional<std::string> onAction;    ///< Action that should be translated into another action.
 

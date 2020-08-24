@@ -173,7 +173,9 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
             if (matchesAction(binding))
                 return binding.action;
 
-            // If we have an action to translate, we don't look at anything else.
+            // @note If we have an action to translate, we don't look at anything else.
+            //       This is because once we have interpreted the input into an action we don't want to consider this input any more.
+            //       Instead we want to process only the abstract action.
             if (onAction)
                 continue;
 

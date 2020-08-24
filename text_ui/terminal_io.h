@@ -122,7 +122,7 @@ struct Esc {
         return secondByte == '[';
     }
 
-    // Fields below are valid only for SS2 of SS3 sequences.
+    // Fields below are valid only for SS2 or SS3 sequences.
     std::string ssCharacter;
 
     // Fields below are valid only for CSI sequences.
