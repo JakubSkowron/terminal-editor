@@ -153,14 +153,6 @@ int main() {
                 }
                 else
                 if (auto keyEvent = std::get_if<KeyPressed>(&e)) {
-                    if (keyEvent->wasCtrlHeld() && (keyEvent->getAscii() == 'Q')) {
-                        messageBox(rootWindow, "Good bye");
-                        redraw();
-                        screenBuffer.present();
-                        std::this_thread::sleep_for(1s);
-                        return 0;
-                    }
-
                     std::string key;
                     if (keyEvent->wasCtrlHeld()) {
                         key = "Ctrl-";
@@ -201,7 +193,7 @@ int main() {
                     push_line(message);
                 }
                 else
-                if (auto brokenInput = std::get_if<BrokenInput>(&e)) {
+                if (std::get_if<BrokenInput>(&e)) {
                     LOG() << "Input broken.";
                     return -1;
                 }

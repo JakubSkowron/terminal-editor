@@ -163,7 +163,8 @@ const EditorConfig& getEditorConfig() {
         }
     }
     catch (const FileNotFoundException&) {
-        LOG() << "'" << configFileName << "' not found. Using default editor config.";
+        ZASSERT(false) << "'" << configFileName << "' not found.";
+        //LOG() << "'" << configFileName << "' not found. Using default editor config.";
     }
 
     return editorConfig;
