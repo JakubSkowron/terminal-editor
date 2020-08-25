@@ -222,7 +222,7 @@ tl::optional<std::string> LinuxConsoleReader::readConsole() {
 
     while (true)
     {
-        int waitResult = poll(&waitHandles, 2, -1);
+        int waitResult = poll(waitHandles, 2, -1);
         if (waitResult > 0)
         {
             break;
@@ -258,7 +258,7 @@ tl::optional<std::string> LinuxConsoleReader::readConsole() {
         return buf;
     }
 
-    return txt;
+    ZASSERT(false) << "Console descriptor is in unexpected state: " << waitHandles[1].revents;
 }
 
 #endif
