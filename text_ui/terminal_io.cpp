@@ -332,7 +332,7 @@ void EventQueue::push(Event e) {
     {
         std::unique_lock<std::mutex> lock{mutex};
 
-        for (auto it = eventFilters.begin(); it != eventFilters.end(); ++it) {
+        for (auto it = eventFilters.begin(); it != eventFilters.end();) {
             auto result = (it->second)(e);
             if (result.finished)
             {

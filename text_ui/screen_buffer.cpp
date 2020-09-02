@@ -594,8 +594,8 @@ void ScreenCanvas::print(Point pt, gsl::span<const Grapheme> graphemes, Attribut
             curX += grapheme.width;
         } else {
             // We will draw some >> characters to show that the grapheme was clipped.
-            ZASSERT(textRendererWidthCache.getWidth(0x3C) == 1);    // '<'
-            ZASSERT(textRendererWidthCache.getWidth(0x3E) == 1);    // '>'
+            ZASSERT(textRendererWidthCache.getWidth(0x3C).value_or(1) == 1);    // '<'
+            ZASSERT(textRendererWidthCache.getWidth(0x3E).value_or(1) == 1);    // '>'
 
             Grapheme lchevron = { GraphemeKind::REPLACEMENT, "\x3C", "Grapheme was clipped by the left edge of the clip rectangle.", 1, grapheme.consumedInput };
             Grapheme rchevron = { GraphemeKind::REPLACEMENT, "\x3E", "Grapheme was clipped by the right edge of the clip rectangle.", 1, grapheme.consumedInput };
