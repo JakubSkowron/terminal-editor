@@ -1,6 +1,9 @@
 {
     "tabWidth": 4,
     "mouse-wheel-scroll-lines": 1,
+    "character-categories": [
+        "this is meant to customize behaviour of cursor-word-left and -right commands"
+    ],
     "keyMaps": {
         "virtual-keys": {
             "bindings": [

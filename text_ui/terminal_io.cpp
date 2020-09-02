@@ -11,6 +11,7 @@
 
 #include <tl/expected.hpp>
 
+#include <future>
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -330,6 +331,22 @@ MouseTracking::~MouseTracking() {
 void EventQueue::push(Event e) {
     {
         std::unique_lock<std::mutex> lock{mutex};
+
+        for (auto it = eventFilters.begin(); it != eventFilters.end(); ++it) {
+            auto result = (it->second)(e);
+            if (result.finished)
+            {
+                it = eventFilters.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+
+            if (result.consumed)
+                return;
+        }
+
         queue.push(std::move(e));
     }
     cv.notify_one();
@@ -346,6 +363,46 @@ tl::optional<Event> EventQueue::poll(bool block) {
     Event e = queue.front();
     queue.pop();
     return e;
+}
+
+tl::optional<Event> EventQueue::requestAndResponse(std::function<void()> makeRequest, std::function<EventResult(Event)> processEvent, std::chrono::milliseconds timeout)
+{
+    std::promise<Event> promise;
+    auto future = promise.get_future();
+    {
+        std::unique_lock<std::mutex> lock{ mutex };
+        makeRequest();
+
+        auto callback = [&promise, processEvent] (Event e) mutable {
+            auto result = processEvent(e);
+            if (result.finished) {
+                promise.set_value(e);
+            }
+            return result;
+        };
+
+        eventFilters.emplace_back(&promise, callback);
+    }
+
+    auto wait_result = future.wait_for(timeout);
+    if (wait_result == std::future_status::timeout)
+    {
+        // We need to remove our processEvent from eventFilters.
+        // But we need to account for a race condition when processEvent is called before we do that.
+        std::unique_lock<std::mutex> lock{ mutex };
+
+        auto it = std::find_if(eventFilters.begin(), eventFilters.end(), [&promise](auto pair) { return pair.first == &promise; });
+        if (it == eventFilters.end())
+        {
+            // Event filter was already unregistered, so we have a value ready.
+            return future.get();
+        }
+
+        eventFilters.erase(it);
+        return tl::nullopt;
+    }
+
+    return future.get();
 }
 
 /// If given escape sequence describes a mouse event, it is converted into a mouse event.

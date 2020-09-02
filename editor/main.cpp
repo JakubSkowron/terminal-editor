@@ -9,6 +9,7 @@
 #include "zerrors.h"
 #include "window.h"
 #include "editor_window.h"
+#include "width_cache.h"
 
 #include <chrono>
 #include <cstdio>
@@ -18,7 +19,7 @@
 #include <sstream>
 #include <thread>
 #include <iostream>
-//#include <clocale>
+#include <clocale>
 
 using namespace terminal_editor;
 
@@ -48,7 +49,7 @@ int main() {
     using namespace std::chrono_literals;
 
     //std::cout.sync_with_stdio(false);
-    //std::setlocale(LC_ALL, "en_US.UTF8"); // @todo Is ths necessary?
+    std::setlocale(LC_ALL, "en_US.UTF8"); // @todo Is ths necessary?
 
     try {
         ScreenBuffer screenBuffer;
@@ -82,7 +83,8 @@ int main() {
         auto editorWindow = rootWindow->addChild<EditorWindow>("Editor", Rect{}, true, normalAttributes, invalidAttributes, replacementAttributes);
         windowManager.setFocusedWindow(editorWindow);
 
-        auto redraw = [&screenBuffer, &line_buffer, &rootWindow]() {
+        /// Redraws the screen.
+        auto basicRedraw = [&screenBuffer, &line_buffer, &rootWindow]() {
             screenBuffer.clear(Color::Bright_White);
 
             auto canvas = screenBuffer.getCanvas();
@@ -102,8 +104,33 @@ int main() {
             }
         };
 
+        /// Redraws the screen.
+        /// If any graphemes had unknown width it measures them, and re-issues the redraw.
+        auto redraw = [&event_queue, &screenBuffer, &basicRedraw]() {
+            while (true) {
+                basicRedraw();
+                if (textRendererWidthCache.getMissingWidths().empty()) {
+                    break;
+                }
+
+                // We need to re-render all grapheme buffers as well.
+
+                // We will be sending commands to the terminal directly, so we need to tell that to ScreenBuffer.
+                screenBuffer.setFullRepaintNeeded();
+
+                auto missingWidths = textRendererWidthCache.getMissingWidths(); // @note We make a copy here, because we will be modifying original inside the looop.
+                for (auto codePoint : missingWidths) {
+                    uint32_t codePoints[] = { codePoint };
+                    auto width = measureText(event_queue, codePoints);  // @todo This can fail. What do we do then? Exit, try again, use wcwidth?
+                    LOG() << "Codepoint width: " << codePoint << ", " << width;
+                    textRendererWidthCache.setWidth(codePoint, width);
+                }
+            }
+        };
+
         while (true) {
             redraw();
+            //screenBuffer.setFullRepaintNeeded();
             screenBuffer.present();
 
             auto block = true;

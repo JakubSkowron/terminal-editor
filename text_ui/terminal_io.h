@@ -16,6 +16,8 @@
 #include <thread>
 #include <string>
 #include <variant>
+#include <functional>
+#include <chrono>
 #include <tl/optional.hpp>
 
 #ifndef WIN32
@@ -190,16 +192,40 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
 
 class EventQueue {
 public:
+    /// Pushes event to the queue.
+    /// @param e Event to push.
     void push(Event e);
     
     /// Returns one event from the queue.
     /// @param block    If true the function will not return until an event is available. Otherwise it will return none if event is not available.
     tl::optional<Event> poll(bool block);
 
+    /// Used as result for requestAndResponse()'s processEvent parameter.
+    struct EventResult {
+        EventResult(bool consumed, bool finished) : consumed(consumed), finished(finished) {}
+        bool consumed;      ///< If true event should be considered consumed. It will not be passed to other processEvent functions and will not end up in the queue.
+        bool finished;      ///< If true waiting for repose if finished, and requestAndResponse() should exit.
+    };
+
+    /// Calls makeRequest and processes every subsequent event using processEvent.
+    /// This function blocks until processEvent returns a "finished" state, or timeout happens.
+    /// @note This function can prevent some events from ending up in the queue.
+    /// @param makeRequest  Function that will be called to initialize the request. It will be called within requestAndResponse() to avoid race condition if response would come back very quickly.
+    ///                     @note makeRequest will be called under mutex.
+    /// @param processEvent Function that examines the event and decides what to do with the event, and whether to stop.
+    ///                     @note processEvent might be called from a different thread, but will not be called concurrently.
+    /// @param timeout      Timeout for waiting on response.
+    /// @return Event that caused processEvent to return "finished" state, or nullopt if timeout happened.
+    tl::optional<Event> requestAndResponse(std::function<void()> makeRequest, std::function<EventResult(Event)> processEvent, std::chrono::milliseconds timeout);
+
 private:
-    std::queue<Event> queue;
-    std::condition_variable cv;
-    std::mutex mutex;
+    std::queue<Event> queue;        ///< Queue of input events.
+    std::condition_variable cv;     ///< Condition variable used to wake up clients waiting on poll().
+    std::mutex mutex;               ///< Mutex for the queue and cv.
+
+    std::vector< std::pair<void*, std::function<EventResult(Event)>> > eventFilters;  ///< Filters used to implement requestAndResponse().
+                                                                  ///< void* is used as an identifier for unregistering functions.
+                                                                  ///< @note Those filters are run under mutex, to avoid calling processEvent concurrently.
 };
 
 // Pushes input events to EventQueue.

@@ -61,11 +61,12 @@ public:
 
     ~LogHelper() noexcept(false) {
         auto messageStr = message.str();
-        std::cerr << messageStr << std::endl;
 
 #ifdef WIN32
         OutputDebugStringA(messageStr.c_str());
         OutputDebugStringA("\n");
+#else
+        std::cerr << messageStr << std::endl;
 #endif
     }
 };

@@ -2,6 +2,7 @@
 
 #include "text_parser.h"
 #include "text_renderer.h"
+#include "terminal_io.h"
 #include "geometry.h"
 
 #include <string>
@@ -102,7 +103,7 @@ private:
     Size size;
     std::vector<Character> characters;
     std::vector<Character> previousCharacters;
-    bool fullRepaintNeeded;
+    bool fullRepaintNeeded;     ///< If true while screen will be repainted. Otherwise only changes from previousCharacters will be repainted.
 
 public:
     ScreenBuffer()
@@ -111,6 +112,11 @@ public:
 
     ScreenCanvas getCanvas() {
         return ScreenCanvas(*this, Point{0, 0}, getSize());
+    }
+
+    /// Sets fullRepaintNeeded flag. Used when contents of the screen were changed without ScreenBuffer.
+    void setFullRepaintNeeded() {
+        fullRepaintNeeded = true;
     }
 
     Size getSize() const {
@@ -159,5 +165,11 @@ Grapheme simpleGrapheme(const char (&simpleChar)[N]) {
 /// Draws a rectangle with borders.
 /// Rectangle is clipped by the clipRect. clipRect must be wholy inside screen buffer.
 void draw_rect(ScreenBuffer& screenBuffer, Rect clipRect, Rect rect, bool doubleEdge, bool fill, Attributes attributes);
+
+/// Measures given text on the terminal
+/// @param eventQueue   Event queue to use for listening for the result.
+/// @param codePoints   List of code points to measure.
+/// @return Length of the code points. Can be zero.
+int measureText(EventQueue& eventQueue, gsl::span<uint32_t> codePoints);
 
 } // namespace terminal_editor

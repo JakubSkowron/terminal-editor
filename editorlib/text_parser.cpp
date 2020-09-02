@@ -308,4 +308,28 @@ void appendCodePoint(std::string& text, uint32_t codePoint) {
     }
 }
 
+void appendCodePoint(std::ostream& os, uint32_t codePoint) {
+    if (codePoint <= 0x007F)  {
+        os << static_cast<char>(codePoint);
+    }
+    else
+    if (codePoint <= 0x07FF) {
+        os << static_cast<char>(((codePoint >> 6) & 0x1F) | 0xC0);
+        os << static_cast<char>(((codePoint     ) & 0x3F) | 0x80);
+    }
+    else
+    if (codePoint <= 0xFFFF) {
+        os << static_cast<char>(((codePoint >> 12) & 0x0F) | 0xE0);
+        os << static_cast<char>(((codePoint >> 6 ) & 0x3F) | 0x80);
+        os << static_cast<char>(((codePoint      ) & 0x3F) | 0x80);
+    }
+    else
+    {
+        os << static_cast<char>(((codePoint >> 18) & 0x07) | 0xF0);
+        os << static_cast<char>(((codePoint >> 12) & 0x3F) | 0x80);
+        os << static_cast<char>(((codePoint >> 6 ) & 0x3F) | 0x80);
+        os << static_cast<char>(((codePoint      ) & 0x3F) | 0x80);
+    }
+}
+
 } // namespace terminal_editor

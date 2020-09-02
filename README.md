@@ -54,3 +54,9 @@ git pull
 git submodule init
 git submodule update
 ```
+
+# VT100 docs
+
+http://ascii-table.com/ansi-escape-sequences-vt-100.php
+https://espterm.github.io/docs/VT100%20escape%20codes.html
+https://vt100.net/docs/vt100-ug/chapter3.html
