@@ -104,33 +104,43 @@ int main() {
             }
         };
 
+        /// Measures all characters missing in textRendererWidthCache.
+        /// @note It is called now right after loading file and after drawing, but it is still not enough.
+        ///       Contents of grapheme buffers should be re-rendered after changes that introduce characters with unknown width.
+        ///       (So after edits, paste, etc.)
+        /// @return False if no characters were missing.
+        auto measureMissingCharacters = [&event_queue, &screenBuffer]() -> bool {
+            if (textRendererWidthCache.getMissingWidths().empty()) {
+                return false;
+            }
+
+            // We will be sending commands to the terminal directly, so we need to tell to ScreenBuffer that it's view of screen state is invalid.
+            screenBuffer.setFullRepaintNeeded();
+
+            auto missingWidths = textRendererWidthCache.getMissingWidths(); // @note We make a copy here, because we will be modifying original inside the looop.
+            for (auto codePoint : missingWidths) {
+                uint32_t codePoints[] = { codePoint };
+                auto width = measureText(event_queue, codePoints);  // @todo This can fail. What do we do then? Exit, try again, use wcwidth?
+                LOG() << "Codepoint width: " << codePoint << ", " << width;
+                textRendererWidthCache.setWidth(codePoint, width);
+            }
+
+            return true;
+        };
+
         /// Redraws the screen.
         /// If any graphemes had unknown width it measures them, and re-issues the redraw.
-        auto redraw = [&event_queue, &screenBuffer, &basicRedraw]() {
+        auto redraw = [&measureMissingCharacters, &basicRedraw]() {
             while (true) {
                 basicRedraw();
-                if (textRendererWidthCache.getMissingWidths().empty()) {
+                if (!measureMissingCharacters()) {
                     break;
-                }
-
-                // We need to re-render all grapheme buffers as well.
-
-                // We will be sending commands to the terminal directly, so we need to tell that to ScreenBuffer.
-                screenBuffer.setFullRepaintNeeded();
-
-                auto missingWidths = textRendererWidthCache.getMissingWidths(); // @note We make a copy here, because we will be modifying original inside the looop.
-                for (auto codePoint : missingWidths) {
-                    uint32_t codePoints[] = { codePoint };
-                    auto width = measureText(event_queue, codePoints);  // @todo This can fail. What do we do then? Exit, try again, use wcwidth?
-                    LOG() << "Codepoint width: " << codePoint << ", " << width;
-                    textRendererWidthCache.setWidth(codePoint, width);
                 }
             }
         };
 
         while (true) {
             redraw();
-            //screenBuffer.setFullRepaintNeeded();
             screenBuffer.present();
 
             auto block = true;
@@ -166,6 +176,9 @@ int main() {
 
                     if (*action == "load") {
                         editorWindow->loadFile("text.txt");
+                        if (measureMissingCharacters()) {
+                            editorWindow->loadFile("text.txt");
+                        }
                     }
 
                     if (*action == "quit") {
