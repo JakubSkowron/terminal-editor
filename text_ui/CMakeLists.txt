@@ -9,6 +9,9 @@ set(LIB_SOURCES
     terminal_size.h
     terminal_size.cpp
 
+    console_reader.h
+    console_reader.cpp
+    
     terminal_io.h
     terminal_io.cpp
     

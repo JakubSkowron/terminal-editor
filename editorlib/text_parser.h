@@ -45,4 +45,10 @@ std::string analyzeData(gsl::span<const char> inputData);
 /// @param codePoint    UTF-32 code point to append.
 void appendCodePoint(std::string& text, uint32_t codePoint);
 
+/// Appends UTF-8 representation of given code point to an output stream.
+/// @todo Move to some string utilities.
+/// @param os           Output stream to append code point to.
+/// @param codePoint    UTF-32 code point to append.
+void appendCodePoint(std::ostream& os, uint32_t codePoint);
+
 } // namespace terminal_editor

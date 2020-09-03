@@ -11,6 +11,7 @@
 
 #include <tl/expected.hpp>
 
+#include <future>
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -20,7 +21,6 @@
 #include <cstdlib>
 
 #ifdef WIN32
-#include "terminal_size.h"
 #include <clocale>
 #else
 #include <termios.h> // for tcsetattr
@@ -28,9 +28,6 @@
 #endif
 
 namespace terminal_editor {
-
-int mouseX = 0;
-int mouseY = 0;
 
 tl::optional<std::string> getActionForEvent(const std::string& contextName, const Event& event, const EditorConfig& editorConfig) {
     // Check if there is a key map for current context. Fallback to "global" if not found.
@@ -334,6 +331,22 @@ MouseTracking::~MouseTracking() {
 void EventQueue::push(Event e) {
     {
         std::unique_lock<std::mutex> lock{mutex};
+
+        for (auto it = eventFilters.begin(); it != eventFilters.end();) {
+            auto result = (it->second)(e);
+            if (result.finished)
+            {
+                it = eventFilters.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+
+            if (result.consumed)
+                return;
+        }
+
         queue.push(std::move(e));
     }
     cv.notify_one();
@@ -352,82 +365,49 @@ tl::optional<Event> EventQueue::poll(bool block) {
     return e;
 }
 
-#ifdef WIN32
-tl::optional<std::string> readConsole() {
-    static HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
-    if (hStdin == INVALID_HANDLE_VALUE)
-        ZHARDASSERT(false) << "Could not get console input handle: " << GetLastError();
-
-    // @todo Read all available characters.
-    const int ReadBufferSize = 1024;
-    DWORD cNumRead;
-    INPUT_RECORD irInBuf[ReadBufferSize];
-
-    if (!ReadConsoleInput(hStdin,           // input buffer handle
-                          irInBuf,          // buffer to read into
-                          ReadBufferSize,   // size of read buffer
-                          &cNumRead))       // number of records read
+tl::optional<Event> EventQueue::requestAndResponse(std::function<void()> makeRequest, std::function<EventResult(Event)> processEvent, std::chrono::milliseconds timeout)
+{
+    std::promise<Event> promise;
+    auto future = promise.get_future();
     {
-        ZHARDASSERT(false) << "Could not read input from console: " << GetLastError();
+        std::unique_lock<std::mutex> lock{ mutex };
+        makeRequest();
+
+        auto callback = [&promise, processEvent] (Event e) mutable {
+            auto result = processEvent(e);
+            if (result.finished) {
+                promise.set_value(e);
+            }
+            return result;
+        };
+
+        eventFilters.emplace_back(&promise, callback);
     }
 
-    std::string txt;
-    bool ctrl = false; // @todo This is not used now. Should it be?
+    auto wait_result = future.wait_for(timeout);
+    if (wait_result == std::future_status::timeout)
+    {
+        // We need to remove our processEvent from eventFilters.
+        // But we need to account for a race condition when processEvent is called before we do that.
+        std::unique_lock<std::mutex> lock{ mutex };
 
-    for (int i = 0; i < static_cast<int>(cNumRead); ++i) {
-        switch (irInBuf[i].EventType) {
-            case KEY_EVENT: // keyboard input
-                auto kevent = irInBuf[i].Event.KeyEvent;
-                if (kevent.bKeyDown) {
-                    static char szBuf[1024];
-                    int count = WideCharToMultiByte(CP_UTF8, 0, &kevent.uChar.UnicodeChar, 1, szBuf, sizeof(szBuf), NULL, NULL);
-
-                    bool localCtrl = (kevent.dwControlKeyState & (LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED)) != 0;
-                    ctrl |= localCtrl;
-                    txt += std::string(szBuf, szBuf + count);
-                }
-                break;
-
-            case MOUSE_EVENT: // mouse input
-                // MouseEventProc(irInBuf[i].Event.MouseEvent);
-                auto mevent = irInBuf[i].Event.MouseEvent;
-                mouseX = mevent.dwMousePosition.X;
-                mouseY = mevent.dwMousePosition.Y;
-                break;
-
-            case WINDOW_BUFFER_SIZE_EVENT: // scrn buf. resizing
-                // ResizeEventProc( irInBuf[i].Event.WindowBufferSizeEvent );
-                auto wevent = irInBuf[i].Event.WindowBufferSizeEvent;
-                g_terminal_width = wevent.dwSize.X;
-                g_terminal_height = wevent.dwSize.Y;
-                fire_screen_resize_event();
-                break;
-
-            case FOCUS_EVENT: // disregard focus events
-
-            case MENU_EVENT: // disregard menu events
-                break;
-
-            default: 
-                ZHARDASSERT(false) << "Unknown event type"; 
+        auto it = std::find_if(eventFilters.begin(), eventFilters.end(), [&promise](auto pair) { return pair.first == &promise; });
+        if (it == eventFilters.end())
+        {
+            // Event filter was already unregistered, so we have a value ready.
+            return future.get();
         }
+
+        eventFilters.erase(it);
+        return tl::nullopt;
     }
 
-    return txt;
+    return future.get();
 }
-#else
-tl::optional<std::string> readConsole() {
-    // @todo Read all available characters.
-    char buf[1024];
-    auto count = ::read(::fileno(stdin), buf, sizeof(buf) - 1);
-    if (count == -1)
-        return tl::nullopt; // Error.
 
-    buf[count] = '\0';
-    return buf;
-}
-#endif
-
+/// If given escape sequence describes a mouse event, it is converted into a mouse event.
+/// @param esc Escape sequence to analyze.
+/// @return MouseEvent or nullopt if escape sequence was not a mouse event.
 tl::optional<MouseEvent> extractMouseEvent(const Esc& esc) {
     if (!esc.isCSI())
         return tl::nullopt;
@@ -486,30 +466,41 @@ tl::expected<uint32_t, std::string> eatCodePoint(std::string& txt) {
     return codePoint.codePoint;
 }
 
-// @todo Use non-blocking IO (or poll/select) to be able to join this thread in destructor.
-// @todo Processing of escape seqauences should read input as long as there is a possibility that it might be a valid escape sequence.
-//       As it is now (just assuming that every escape sequence is delivered in whole) is not correct.
+// @note Processing of escape seqences is weird and not possible to do in a bullet proof way.
+//       This is because sequence of ESC and <no character> should be considered as a raw ESC (by some conventions), so
+//       that means that *delay* between receiving characters is significant.
+//       Under some other conventions ESC ESC should be considered a raw ESC.
+//       Other ESC related rules also exist.
+//       We simply make here an assumption (that not always holds!) that escape sequences will not be broken into pieces,
+//       and we will always get them in one read from the console.
+//       This can break due to various conditions:
+//         - input broken into many TCP packets,
+//         - escape sequence on the boundary of the buffer we use to read from console,
+//         - signal handling on Linux might break a read into two,
+//         - etc.
+//       If this implementation will prove problematic in practice we will think about making it more correct and robust.
 void InputThread::loop() {
     while (true) {
-        auto txtopt = readConsole();
-        if (break_loop)
-            return;
+        tl::optional<std::string> txtopt;
+        try
+        {
+            txtopt = console_reader->readConsole();
+        }
+        catch (std::exception& exc) {
+            Error error;
+            error.msg = ZSTR() << "Error reading input: " << exc.what();
+            event_queue.push(error);
+            event_queue.push(BrokenInput());
+            break;
+        }
 
         if (!txtopt) {
-            Error error;
-            if (std::feof(stdin)) {
-                error.msg = "stdin EOF";
-            }
-            if (std::ferror(stdin)) {
-                error.msg = "stdin ERROR";
-            }
-            event_queue.push(error);
+            event_queue.push(BrokenInput());
             break;
         }
 
         auto& txt = *txtopt;
 
-        // @todo This processing is probably not too good, as some network buffering might split escape sequences into more reads than one.
         while (!txt.empty()) {
             // Eat normal inputs.
             while (true) {
@@ -526,8 +517,8 @@ void InputThread::loop() {
                 // Move to processing escape sequence.
                 if (*codePoint == 0x1b) {
                     if (txt.empty()) {
-                        Error error { ZSTR() << "No second byte of the escape sequence." };
-                        event_queue.push(error);
+                        //Error error { ZSTR() << "No second byte of the escape sequence." };
+                        //event_queue.push(error);
 
                         // Raw ESC key pressed.
                         KeyPressed keyEvent;
@@ -664,14 +655,15 @@ void InputThread::loop() {
 }
 
 InputThread::InputThread(EventQueue& event_queue)
-    : event_queue(event_queue)
-    , thread(&InputThread::loop, this) {
-    thread.detach(); // join in destructor would block until there is some input from console. @todo Solve it.
+    : console_reader(create_interruptible_console_reader())
+    , event_queue(event_queue)
+    , thread(&InputThread::loop, this)
+{
 }
 
 InputThread::~InputThread() {
-    break_loop = true;
-    // thread.join();
+    console_reader->setQuitFlag();
+    thread.join();
 }
 
 } // namespace terminal_editor

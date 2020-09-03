@@ -1,7 +1,10 @@
 ﻿#include "screen_buffer.h"
 
-#include "screen_functions.h"
 #include "zerrors.h"
+#include "screen_functions.h"
+#include "terminal_io.h"
+#include "text_buffer.h"
+#include "zlogging.h"
 
 #include <unordered_map>
 
@@ -122,6 +125,8 @@ int setStyle(std::ostream& os, int currentStyleHash, Attributes attributes) {
 #define USE_WIN32_CONSOLE 0
 
 #if defined(WIN32) && (USE_WIN32_CONSOLE != 0)
+
+#error Functions for measuring characters are not yet implemented for Windows console.
 
 std::unordered_map<Color, WORD> fgColors = {
     {Color::Black,          0},
@@ -277,12 +282,102 @@ void cursor_goto(HANDLE hOut, int x, int y) {
 
 #if !defined(WIN32) || (USE_WIN32_CONSOLE == 0) || (USE_WIN32_CONSOLE == 1)
 
+int measureText(EventQueue& eventQueue, gsl::span<uint32_t> codePoints) {
+    auto makeRequest = [codePoints]() {
+#ifdef WIN32
+        HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (hOut == INVALID_HANDLE_VALUE) {
+            ZTHROW() << "Could not get console output handle: " << GetLastError();
+        }
+#endif
+
+        std::stringstream ss;
+
+        cursor_goto(ss, 0, 0);
+
+        // Add two dotted circles to be able to measure combining characters better.
+        appendCodePoint(ss, 0x25CC);
+        appendCodePoint(ss, 0x25CC);
+
+        for (auto codePoint : codePoints) {
+            appendCodePoint(ss, codePoint);
+        }
+
+        ss << "X"; // For debugging.
+        ss << "\x1b[6n"; // Get cursor position. Expected response: ^[<Line>;<Column>R (both Line and Column might be missing, which is equvalent to zero).
+
+        auto str = ss.str();
+#ifdef WIN32
+        DWORD numberOfCharsWritten;
+        if (!WriteConsoleA(hOut, str.c_str(), static_cast<DWORD>(str.size()), &numberOfCharsWritten, NULL)) {
+            ZTHROW() << "Error while writing to console: " << GetLastError();
+        }
+#else
+        fputs(str.c_str(), stdout);
+        std::fflush(stdout);
+#endif
+    };
+
+    auto processEvent = [](Event e) -> EventQueue::EventResult {
+        auto escEvent = std::get_if<Esc>(&e);
+        if (!escEvent) {
+            return EventQueue::EventResult(false, false);
+        }
+
+        if (!escEvent->isCSI()) {
+            return EventQueue::EventResult(false, false);
+        }
+
+        if (escEvent->csiFinalByte != 'R') {
+            return EventQueue::EventResult(false, false);
+        }
+
+        return EventQueue::EventResult(true, true);
+    };
+
+    auto acceptedEvent = eventQueue.requestAndResponse(makeRequest, processEvent, std::chrono::seconds(1));
+    if (!acceptedEvent) {
+        ZTHROW() << "measureText(): Timeout.";
+    }
+
+    auto escEvent = std::get<Esc>(*acceptedEvent);
+
+    if (!escEvent.csiIntermediateBytes.empty()) {
+        ZTHROW() << "measureText(): unexpected intermediate bytes: " << escEvent.csiIntermediateBytes;
+    }
+
+    std::vector<std::string> params;
+    if (!escEvent.csiParameterBytes.empty()) {
+        params = splitString(escEvent.csiParameterBytes, ';');
+    }
+    if (params.size() != 2) {
+        ZTHROW() << "measureText(): invalid response parameters: " << escEvent.csiParameterBytes;
+    }
+
+    // Returned line and colums are 1 based, so we adjust for it here.
+    int line = params[0].empty() ? 0 : static_cast<int>(std::strtol(params[0].c_str(), nullptr, 10)) - 1;
+    int column = params[1].empty() ? 0 : static_cast<int>(std::strtol(params[1].c_str(), nullptr, 10)) - 1;
+
+    if (line != 0) {
+        ZTHROW() << "measureText(): text wrapped to another line: " << line;
+    }
+
+    auto width = column - 3;
+    if (width < 0) {
+        ZTHROW() << "measureText(): text has negative length: " << width;
+    }
+
+    return width;
+}
+
 void ScreenBuffer::present() {
 #ifdef WIN32
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
     if (hOut == INVALID_HANDLE_VALUE) {
         ZTHROW() << "Could not get console output handle: " << GetLastError();
     }
+#else
+    int hOut = 0; // Not used.
 #endif
 
 #if defined(WIN32) && (USE_WIN32_CONSOLE == 1)
@@ -290,6 +385,31 @@ void ScreenBuffer::present() {
 #else
     std::stringstream ss;
 #endif
+
+    bool debugPrint = false;
+
+    auto flushToScreen = [hOut, &ss, &debugPrint]() {
+        auto str = ss.str();
+        if (debugPrint) {
+            LOG() << "Drawing: " << str;
+        }
+#ifdef WIN32
+        DWORD numberOfCharsWritten;
+        if (!WriteConsoleA(hOut, str.c_str(), static_cast<DWORD>(str.size()), &numberOfCharsWritten, NULL)) {
+            ZTHROW() << "Error while writing to console: " << GetLastError();
+        }
+#else
+        fputs(str.c_str(), stdout);
+        std::fflush(stdout);
+#endif
+        ss.str(std::string());
+    };
+
+    // Clear screen.
+    if (debugPrint) {
+        ss << "\x1b[2J";
+        flushToScreen();
+    }
 
     int currentStyleHash = 0;
     int curX = -1;
@@ -313,6 +433,9 @@ void ScreenBuffer::present() {
             }
 
             currentStyleHash = setStyle(ss, currentStyleHash, character.attributes);
+            if (debugPrint) {
+                flushToScreen();
+            }
 
 #if defined(WIN32) && (USE_WIN32_CONSOLE == 1)
             DWORD numberOfCharsWritten;
@@ -321,6 +444,9 @@ void ScreenBuffer::present() {
             }
 #else
             ss << character.text;
+            if (debugPrint) {
+                flushToScreen();
+            }
 #endif
 
             curX += character.width;
@@ -332,16 +458,7 @@ void ScreenBuffer::present() {
 #if defined(WIN32) && (USE_WIN32_CONSOLE == 1)
     // All drawing was already done.
 #else
-    auto str = ss.str();
-#ifdef WIN32
-    DWORD numberOfCharsWritten;
-    if (!WriteConsoleA(hOut, str.c_str(), static_cast<DWORD>(str.size()), &numberOfCharsWritten, NULL)) {
-        ZTHROW() << "Error while writing to console: " << GetLastError();
-    }
-#else
-    fputs(str.c_str(), stdout);
-    std::fflush(stdout);
-#endif
+    flushToScreen();
 #endif
 
     fullRepaintNeeded = false;
@@ -476,16 +593,33 @@ void ScreenCanvas::print(Point pt, gsl::span<const Grapheme> graphemes, Attribut
 
             curX += grapheme.width;
         } else {
+            // We will draw some >> characters to show that the grapheme was clipped.
+            ZASSERT(textRendererWidthCache.getWidth(0x3C).value_or(1) == 1);    // '<'
+            ZASSERT(textRendererWidthCache.getWidth(0x3E).value_or(1) == 1);    // '>'
+
+            Grapheme lchevron = { GraphemeKind::REPLACEMENT, "\x3C", "Grapheme was clipped by the left edge of the clip rectangle.", 1, grapheme.consumedInput };
+            Grapheme rchevron = { GraphemeKind::REPLACEMENT, "\x3E", "Grapheme was clipped by the right edge of the clip rectangle.", 1, grapheme.consumedInput };
+
             auto codePointInfosG = parseLine(grapheme.rendered);
             auto graphemesG = renderLine(codePointInfosG);
             for (const auto& graphemeG : graphemesG) {
                 // Draw grapheme only if it fits on the canvas completely.
                 if ((curX >= m_clipRect.topLeft.x) && (curX + graphemeG.width <= m_clipRect.bottomRight().x)) {
                     m_screenBuffer.print(curX, pt.y, {&graphemeG, 1}, (grapheme.kind == GraphemeKind::INVALID) ? invalid : replacement);
+                    curX += graphemeG.width;
                 }
-
-                curX += graphemeG.width;
+                else
+                {
+                    // Otherwise draw chevrons to show that some grapheme was clipped.
+                    auto chevron = (curX < m_clipRect.topLeft.x) ? lchevron : rchevron;
+                    for (int i = 0; i < graphemeG.width; ++i, ++curX) {
+                        if ((curX >= m_clipRect.topLeft.x) && (curX + chevron.width <= m_clipRect.bottomRight().x)) {
+                            m_screenBuffer.print(curX, pt.y, { &chevron, 1 }, replacement);
+                        }
+                    }
+                }
             }
+
         }
 
         // Skip graphemes beyond right boundary.

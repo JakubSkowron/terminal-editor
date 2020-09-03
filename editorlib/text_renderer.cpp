@@ -8,6 +8,8 @@
 
 namespace terminal_editor {
 
+CodePointWidthCache textRendererWidthCache;
+
 Grapheme renderGrapheme(gsl::span<const CodePointInfo> codePointInfos) {
     if (codePointInfos.empty()) {
         return {GraphemeKind::NORMAL, "", "", 0, {}};
@@ -34,13 +36,15 @@ Grapheme renderGrapheme(gsl::span<const CodePointInfo> codePointInfos) {
             int width;
             if (controlName != nullptr) {
                 rendered = controlName;
-                width = static_cast<int>(rendered.size()); // @todo This is a simplification that works for now.
+                width = static_cast<int>(rendered.size()); // @todo This is a simplification that works for now. We should measure the width of the string properly.
                 if (kind == GraphemeKind::NORMAL) {
                     kind = GraphemeKind::REPLACEMENT;
                 }
             } else {
                 appendCodePoint(rendered, codePoint);
-                width = wcwidth(codePoint);
+                // @note For all characters we don't know the width of we assume width of 1.
+                //       This might not be correct, but width cache records it, and we will re-draw the screen after measuring missing characters.
+                width = textRendererWidthCache.getWidth(codePoint).value_or(1);
             }
 
             fullRendered += rendered;
@@ -98,7 +102,7 @@ std::vector<Grapheme> renderLine(gsl::span<CodePointInfo> codePointInfos) {
                 rendered.append(u8"x");
                 rendered.append(1, hex[byte >> 4]);
                 rendered.append(1, hex[byte & 0x0F]);
-                int width = static_cast<int>(rendered.size()); // @todo This is a simplification that works for now.
+                int width = static_cast<int>(rendered.size()); // @todo This is a simplification that works for now. We should measure the width of the string properly.
 
                 Grapheme grapheme = {GraphemeKind::INVALID, rendered, codePointInfo.info, width, {codePointInfo.consumedInput.data() + i, 1}};
                 graphemes.push_back(grapheme);

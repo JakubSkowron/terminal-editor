@@ -7,6 +7,7 @@
 #include "editor_config.h"
 #include "text_parser.h"
 #include "geometry.h"
+#include "console_reader.h"
 #include "zstr.h"
 
 #include <condition_variable>
@@ -15,6 +16,8 @@
 #include <thread>
 #include <string>
 #include <variant>
+#include <functional>
+#include <chrono>
 #include <tl/optional.hpp>
 
 #ifndef WIN32
@@ -24,9 +27,6 @@
 #endif
 
 namespace terminal_editor {
-
-extern int mouseX;
-extern int mouseY;
 
 /* Turns echo and canonical mode off, enter raw mode. */
 class TerminalRawMode {
@@ -135,7 +135,11 @@ struct Esc {
 
 /// Error event describes any kind of error while processing event read from the terminal. Usually a malformed or unknown escape sequence, or invalid character.
 struct Error {
-    std::string msg;    ///< UTF-8 string.
+    std::string msg;    ///< UTF-8 string with error message.
+};
+
+/// BrokenInput event is sent when reading of input was stopped (due to error or normally). In that case the only thing we can do is quit.
+struct BrokenInput {
 };
 
 /// Event sent when console window size changes. Is an input event, as editor must react to it.
@@ -178,7 +182,7 @@ inline std::ostream& operator<<(std::ostream& os, MouseEvent::Kind kind) {
 }
 
 /// This type defines all kinds of input events editor can respond to.
-using Event = std::variant<KeyPressed, Esc, Error, WindowSize, MouseEvent>;
+using Event = std::variant<KeyPressed, Esc, Error, BrokenInput, WindowSize, MouseEvent>;
 
 /// Returns action that is bound to given Event.
 /// @param contextName      Name of the key map to use.
@@ -188,31 +192,54 @@ tl::optional<std::string> getActionForEvent(const std::string& contextName, cons
 
 class EventQueue {
 public:
+    /// Pushes event to the queue.
+    /// @param e Event to push.
     void push(Event e);
     
     /// Returns one event from the queue.
     /// @param block    If true the function will not return until an event is available. Otherwise it will return none if event is not available.
     tl::optional<Event> poll(bool block);
 
+    /// Used as result for requestAndResponse()'s processEvent parameter.
+    struct EventResult {
+        EventResult(bool consumed, bool finished) : consumed(consumed), finished(finished) {}
+        bool consumed;      ///< If true event should be considered consumed. It will not be passed to other processEvent functions and will not end up in the queue.
+        bool finished;      ///< If true waiting for repose if finished, and requestAndResponse() should exit.
+    };
+
+    /// Calls makeRequest and processes every subsequent event using processEvent.
+    /// This function blocks until processEvent returns a "finished" state, or timeout happens.
+    /// @note This function can prevent some events from ending up in the queue.
+    /// @param makeRequest  Function that will be called to initialize the request. It will be called within requestAndResponse() to avoid race condition if response would come back very quickly.
+    ///                     @note makeRequest will be called under mutex.
+    /// @param processEvent Function that examines the event and decides what to do with the event, and whether to stop.
+    ///                     @note processEvent might be called from a different thread, but will not be called concurrently.
+    /// @param timeout      Timeout for waiting on response.
+    /// @return Event that caused processEvent to return "finished" state, or nullopt if timeout happened.
+    tl::optional<Event> requestAndResponse(std::function<void()> makeRequest, std::function<EventResult(Event)> processEvent, std::chrono::milliseconds timeout);
+
 private:
-    std::queue<Event> queue;
-    std::condition_variable cv;
-    std::mutex mutex;
+    std::queue<Event> queue;        ///< Queue of input events.
+    std::condition_variable cv;     ///< Condition variable used to wake up clients waiting on poll().
+    std::mutex mutex;               ///< Mutex for the queue and cv.
+
+    std::vector< std::pair<void*, std::function<EventResult(Event)>> > eventFilters;  ///< Filters used to implement requestAndResponse().
+                                                                  ///< void* is used as an identifier for unregistering functions.
+                                                                  ///< @note Those filters are run under mutex, to avoid calling processEvent concurrently.
 };
 
-// Pushes input events to EventQueue
+// Pushes input events to EventQueue.
 class InputThread {
 public:
-    // TODO: should InputThread get ownership of queue? Probably no.
     InputThread(EventQueue& event_queue);
     ~InputThread();
 
 private:
-    EventQueue& event_queue; // should be declared before thread
-    std::thread thread;
+    std::unique_ptr<InterruptibleConsoleReader> console_reader;
+    EventQueue& event_queue; ///< Should be declared before thread, to make sure it is ready when thread starts.
+    std::thread thread;      ///< This must be last to make sure we don't leak a thread if initialization fails.
 
-    void loop();
-    bool break_loop = false;
+    void loop();             ///< Thread function.
 };
 
 } // namespace terminal_editor
